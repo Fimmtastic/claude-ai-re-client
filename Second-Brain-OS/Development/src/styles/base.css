@@ -11,10 +11,14 @@
 }
 .sbos-root *, .sbos-root *::before, .sbos-root *::after { box-sizing: border-box; }
 .sbos-root :focus { outline: none; }
-.sbos-root :focus-visible { box-shadow: var(--sb-focus-ring); border-radius: var(--sb-radius-sm); }
+.sbos-root :focus-visible { box-shadow: var(--sb-focus-ring) !important; border-radius: var(--sb-radius-sm); }
 .sbos-root ::selection { background: var(--sb-accent-soft); }
-:where(.sbos-root) :where(button) { font: inherit; color: inherit; }
-:where(.sbos-root) :where(a) { color: inherit; text-decoration: none; }
+/* Neutral element reset: beats Obsidian's global `button`/`a` rules, loses to every
+   component rule (those are boosted to .sbos-root.sbos-root … at build time). */
+:is(.sbos-root) button { background: none; box-shadow: none; border: 0; border-radius: 0; height: auto; min-height: 0; padding: 0; margin: 0; font: inherit; color: inherit; align-items: normal; justify-content: normal; white-space: normal; text-align: inherit; line-height: inherit; letter-spacing: inherit; opacity: 1; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+:is(.sbos-root) button:hover, :is(.sbos-root) button:active { background: none; box-shadow: none; }
+:is(.sbos-root) a { color: inherit; text-decoration: none; }
+:is(.sbos-root) input, :is(.sbos-root) select, :is(.sbos-root) textarea { font: inherit; }
 :where(.sbos-root) :where(h1, h2, h3, h4, p) { margin: 0; }
 :where(.sbos-root) :where(ul, ol) { margin: 0; padding: 0; }
 .sbos-root kbd { font-family: var(--sb-font); }
@@ -78,7 +82,7 @@
   transition: border-color var(--sb-fast) var(--sb-ease-out), background var(--sb-fast) var(--sb-ease-out), color var(--sb-fast);
 }
 .sb-sidebar__search:hover { border-color: var(--sb-border-strong); color: var(--sb-text-2); }
-.sb-sidebar__search span { flex: 1; text-align: left; font-size: var(--sb-text-meta); }
+.sb-sidebar__search span:not(.sb-icon) { flex: 1; text-align: left; font-size: var(--sb-text-meta); }
 
 .sb-nav { display: flex; flex-direction: column; gap: 1px; }
 .sb-nav__sep { height: 1px; margin: var(--sb-2) var(--sb-2); background: var(--sb-border); }

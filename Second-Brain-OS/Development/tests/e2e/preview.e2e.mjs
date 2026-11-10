@@ -335,14 +335,17 @@ await check('appearance: theme/glass/background live + bottom nav on phone', asy
   await settle(p, 300);
   const visible = await p.$eval('.sb-bottomnav', (e) => getComputedStyle(e).display !== 'none');
   assert(visible, 'opt-in bottom nav hidden on phone width');
-  await p.click('.sb-theme-swatch >> text=Midnight');
+  await p.click('.sb-ap__tile[aria-label="Midnight"]');
   await settle(p, 300);
-  await p.click('.sb-bg-swatch >> text=Aurora');
+  await p.click('.sb-ap__tile[aria-label="Aurora"]');
   await settle(p, 300);
-  await p.click('text=Enable glass surfaces');
+  await p.click('text=Glass surfaces');
   await settle(p, 300);
   const st = await p.evaluate(() => { const r = document.querySelector('.sb-app'); return { theme: r.dataset.theme, glass: r.classList.contains('is-glass'), bg: r.classList.contains('has-bg'), bf: getComputedStyle(document.querySelector('.sb-card')).backdropFilter }; });
   assert(st.theme === 'midnight' && st.glass && st.bg && st.bf.includes('blur'), JSON.stringify(st));
+  // host (Obsidian-like) button styles must not leak into app controls
+  const leak = await p.evaluate(() => [...document.querySelectorAll('.sbos-root button')].filter((b) => getComputedStyle(b).backgroundColor === 'rgb(54, 54, 54)').map((b) => b.className).slice(0, 5));
+  assert(!leak.length, 'host button style leaked: ' + leak.join(', '));
   await p.screenshot({ path: path.join(shots, 'phone-appearance.png') });
   await p.evaluate(() => window.__sbos.shell.navigate('home'));
   await settle(p, 800);

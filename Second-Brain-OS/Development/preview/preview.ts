@@ -15,6 +15,7 @@ const params = new URLSearchParams(location.search);
 const theme = params.get('theme') ?? 'dark';
 document.body.classList.add(theme === 'light' ? 'theme-light' : 'theme-dark');
 if (params.get('motion') === 'reduce') document.body.classList.add('sb-reduce-motion');
+if (params.get('mobile')) document.body.classList.add('is-mobile', 'is-phone');
 
 const port = new MemoryPort(__SEED__);
 const store = new DataStore(port);

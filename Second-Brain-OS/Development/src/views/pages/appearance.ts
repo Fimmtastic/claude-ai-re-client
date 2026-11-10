@@ -1,25 +1,65 @@
 import { h } from '../../ui/dom';
 import { icon } from '../../ui/icons';
-import { button, card, pageHeader, segmented, slider, toggle } from '../../ui/components/basic';
+import { button, chip, pageHeader, progressBar, segmented, slider, toggle } from '../../ui/components/basic';
 import { confirm, toast } from '../../ui/components/overlay';
 import type { AppContext, PageDef } from '../context';
 import { ACCENTS, BG_PRESETS, THEMES, resolveMode } from '../appearance-apply';
-import { DEFAULT_APPEARANCE, DEFAULT_BOTTOM_NAV, BottomNavItem } from '../../core/settings';
+import { DEFAULT_APPEARANCE, DEFAULT_BOTTOM_NAV, BottomNavItem, Settings } from '../../core/settings';
 import { NAV } from '../meta';
 
 /**
- * Appearance studio: every visual parameter, applied live. Changes only touch
- * CSS variables / data attributes, so nothing re-renders while dragging.
+ * Appearance studio. Every control shows what it does: a live preview at the
+ * top renders real components over the current background, theme tiles are
+ * miniature app windows, background tiles show the actual image/gradient.
+ * Changes only touch CSS variables / data attributes → no re-render while dragging.
  */
 
-type Shellish = AppContext & { applyAppearance?: () => void };
+type Shellish = AppContext & { applyAppearance?: () => void; onHostChrome?: () => void; applySettings?: (s: Settings) => void };
 
 const BN_CHOICES: { id: BottomNavItem; label: string; icon: string }[] = [
   ...NAV.map((n) => ({ id: n.id as BottomNavItem, label: n.label, icon: n.icon })),
-  { id: 'capture', label: 'Capture (+)', icon: 'plus' },
+  { id: 'capture', label: 'Capture', icon: 'plus' },
   { id: 'search', label: 'Search', icon: 'search' },
   { id: 'more', label: 'More', icon: 'more' },
 ];
+
+function backgroundCss(ctx: AppContext): string {
+  const b = ctx.settings.appearance.background;
+  if (b.kind === 'preset') return BG_PRESETS[b.preset]?.css ?? '';
+  if (b.kind === 'image' && b.image) {
+    const url = ctx.port.resourceUrl(b.image);
+    return url ? `center / cover no-repeat url("${url.replace(/"/g, '%22')}")` : '';
+  }
+  return '';
+}
+
+/** Live preview: real components (card, tasks, progress, chips, buttons) over the real background. */
+function livePreview(ctx: AppContext) {
+  const bg = h('div', { class: 'sb-preview__bg' });
+  const dim = h('div', { class: 'sb-preview__dim' });
+  const update = () => {
+    const css = backgroundCss(ctx);
+    const b = ctx.settings.appearance.background;
+    bg.style.background = css || 'var(--sb-bg)';
+    bg.style.filter = css && b.blur ? `blur(${Math.round(b.blur / 2)}px)` : '';
+    dim.style.opacity = String(css ? b.dim : 0);
+  };
+  update();
+  const task = (text: string, done: boolean, chipText?: string) =>
+    h('div', { class: ['sb-task', 'sb-task--compact', done ? 'is-done' : 'is-todo'] },
+      h('span', { class: ['sb-check', done ? 'is-done' : 'is-todo'] }, h('span', { class: 'sb-check__box' }, icon('check', 12, 'sb-check__mark'))),
+      h('div', { class: 'sb-task__body' }, h('span', { class: 'sb-task__text' }, text), chipText ? h('span', { class: 'sb-task__meta' }, chip(chipText, { icon: 'calendar', tone: 'accent' })) : null));
+  const el = h('div', { class: 'sb-preview', attrs: { 'aria-label': 'Live preview', role: 'img' } }, bg, dim,
+    h('div', { class: 'sb-preview__stage' },
+      h('section', { class: 'sb-card sb-preview__card' },
+        h('header', { class: 'sb-card__header' }, h('div', { class: 'sb-card__titles' }, h('h3', { class: 'sb-card__title' }, 'Today'), h('span', { class: 'sb-card__subtitle' }, 'Preview'))),
+        h('div', { class: 'sb-tasklist' }, task('Review VLAN concept', false, 'Today'), task('Update documentation', true)),
+        h('div', { class: 'sb-preview__row' }, progressBar(0.62, { size: 'sm', label: true })),
+        h('div', { class: 'sb-preview__row' }, chip('#network'), chip('Active', { tone: 'accent' }),
+          h('span', { class: 'sb-grow' }),
+          h('span', { class: 'sb-btn sb-btn--primary sb-btn--sm' }, h('span', { class: 'sb-btn__label' }, 'Continue'))))));
+  return { el, update };
+}
 
 export const AppearancePage: PageDef = {
   id: 'appearance',
@@ -29,15 +69,17 @@ export const AppearancePage: PageDef = {
     const ctx = ctx0 as Shellish;
     const s = ctx.settings;
     const a = s.appearance;
-    const live = () => { ctx.applyAppearance?.(); ctx.saveSettings(); };
-    const rerender = () => { live(); ctx.refresh(); (ctx as unknown as { onHostChrome?: () => void }).onHostChrome?.(); };
+    const preview = livePreview(ctx);
+    const live = () => { ctx.applyAppearance?.(); preview.update(); ctx.saveSettings(); };
+    const rerender = () => { live(); ctx.refresh(); ctx.onHostChrome?.(); };
+    const mode = resolveMode(s);
 
     root.append(pageHeader({
       eyebrow: 'Personalisation',
       title: 'Appearance',
-      subtitle: 'Themes, colours, backgrounds and the liquid-glass look. All changes apply live and are saved automatically.',
-      actions: [button({ label: 'Reset all', icon: 'undo', variant: 'ghost', onClick: async () => {
-        if (!(await confirm({ title: 'Reset appearance?', text: 'Theme, accent, background, glass, corner radius and bottom bar go back to their defaults.', confirm: 'Reset' }))) return;
+      subtitle: 'Changes apply instantly and are saved automatically.',
+      actions: [button({ label: 'Reset', icon: 'undo', variant: 'ghost', size: 'sm', onClick: async () => {
+        if (!(await confirm({ title: 'Reset appearance?', text: 'Theme, accent, background, glass, corners and navigation go back to their defaults.', confirm: 'Reset' }))) return;
         s.appearance = structuredClone(DEFAULT_APPEARANCE);
         s.bottomNav = structuredClone(DEFAULT_BOTTOM_NAV);
         s.accent = 'indigo';
@@ -45,51 +87,59 @@ export const AppearancePage: PageDef = {
       } })],
     }));
 
-    // ── Mode & theme
-    const mode = resolveMode(s);
-    const themeGrid = h('div', { class: 'sb-swatches sb-swatches--themes' }, ...THEMES.map((t) => {
+    const controls = h('div', { class: 'sb-ap__controls' });
+    const section = (title: string, hint: string | null, ...body: (Node | null)[]) =>
+      h('section', { class: 'sb-ap__section' }, h('header', { class: 'sb-ap__head' }, h('h2', null, title), hint ? h('p', null, hint) : null), ...body.filter((x): x is Node => !!x));
+
+    // ── Theme
+    const themeTiles = h('div', { class: 'sb-ap__grid sb-ap__grid--themes' }, ...THEMES.map((t) => {
       const [bg, surf, text] = t[mode];
-      const b = h('button', { class: ['sb-theme-swatch', a.theme === t.id && 'is-active'], attrs: { type: 'button', 'aria-pressed': String(a.theme === t.id) } },
-        h('span', { class: 'sb-theme-swatch__preview', style: { background: bg } },
-          h('span', { class: 'sb-theme-swatch__card', style: { background: surf } }, h('i', { style: { background: text } }), h('i', { style: { background: text, opacity: '.4' } }), h('b', { style: { background: 'var(--sb-accent)' } }))),
-        h('span', { class: 'sb-theme-swatch__label' }, t.label));
-      b.addEventListener('click', () => { a.theme = t.id; rerender(); });
-      return b;
+      const tile = h('div', { class: ['sb-ap__tile', a.theme === t.id && 'is-active'], attrs: { role: 'radio', tabindex: '0', 'aria-checked': String(a.theme === t.id), 'aria-label': t.label } },
+        h('div', { class: 'sb-mock', style: { background: bg, color: text } },
+          h('div', { class: 'sb-mock__side', style: { background: `color-mix(in srgb, ${surf} 55%, ${bg})` } }, h('i'), h('i'), h('i', { class: 'is-on' })),
+          h('div', { class: 'sb-mock__main' },
+            h('div', { class: 'sb-mock__title', style: { background: text } }),
+            h('div', { class: 'sb-mock__card', style: { background: surf } }, h('i', { style: { background: text } }), h('i', { style: { background: text } }), h('b')))),
+        h('div', { class: 'sb-ap__label' }, h('span', null, t.label), a.theme === t.id ? icon('check', 13) : null));
+      pressable(tile, () => { a.theme = t.id; rerender(); });
+      return tile;
     }));
-    root.append(card({ title: 'Theme', icon: 'sparkle' },
-      h('div', { class: 'sb-appearance-row' }, h('span', { class: 'sb-appearance-row__label' }, 'Mode'),
-        segmented([{ id: 'obsidian', label: 'Follow Obsidian' }, { id: 'light', label: 'Light', icon: 'sun' }, { id: 'dark', label: 'Dark', icon: 'moon' }], a.mode, (v) => { a.mode = v as typeof a.mode; rerender(); }, { size: 'sm' })),
-      themeGrid));
+    controls.append(section('Theme', null,
+      h('div', { class: 'sb-ap__row' }, h('span', null, 'Mode'),
+        segmented([{ id: 'obsidian', label: 'Auto' }, { id: 'light', label: 'Light', icon: 'sun' }, { id: 'dark', label: 'Dark', icon: 'moon' }], a.mode, (v) => { a.mode = v as typeof a.mode; rerender(); }, { size: 'sm' })),
+      themeTiles));
 
     // ── Accent
-    const custom = h('input', { class: 'sb-color', attrs: { type: 'color', 'aria-label': 'Custom accent colour' } });
-    custom.value = a.accentCustom;
-    custom.addEventListener('input', () => { a.accentCustom = custom.value; s.accent = 'custom'; live(); root.querySelectorAll('.sb-accent-dot').forEach((d) => d.classList.toggle('is-active', (d as HTMLElement).dataset.id === 'custom')); });
-    root.append(card({ title: 'Accent colour', icon: 'heart' },
-      h('div', { class: 'sb-swatches' },
-        ...ACCENTS.map((x) => {
-          const d = h('button', { class: ['sb-accent-dot', s.accent === x.id && 'is-active'], dataset: { id: x.id }, attrs: { type: 'button', 'aria-label': x.label, 'data-tip': x.label }, style: { '--c': x.color } });
-          d.addEventListener('click', () => { s.accent = x.id; live(); root.querySelectorAll('.sb-accent-dot').forEach((e) => e.classList.toggle('is-active', e === d)); });
-          return d;
-        }),
-        h('label', { class: ['sb-accent-dot', 'sb-accent-dot--custom', s.accent === 'custom' && 'is-active'], dataset: { id: 'custom' }, attrs: { 'data-tip': 'Custom colour' }, style: { '--c': a.accentCustom } }, custom, icon('edit', 13)))));
+    const accentName = h('span', { class: 'sb-ap__value' }, s.accent === 'custom' ? 'Custom' : ACCENTS.find((x) => x.id === s.accent)?.label ?? '');
+    const dots = h('div', { class: 'sb-ap__dots', attrs: { role: 'radiogroup', 'aria-label': 'Accent colour' } });
+    const markActive = (id: string) => dots.querySelectorAll<HTMLElement>('.sb-ap__dot').forEach((d) => { d.classList.toggle('is-active', d.dataset.id === id); d.setAttribute('aria-checked', String(d.dataset.id === id)); });
+    for (const x of ACCENTS) {
+      const d = h('div', { class: ['sb-ap__dot', s.accent === x.id && 'is-active'], dataset: { id: x.id }, style: { '--c': x.color }, attrs: { role: 'radio', tabindex: '0', 'aria-label': x.label, 'aria-checked': String(s.accent === x.id) } });
+      pressable(d, () => { s.accent = x.id; accentName.textContent = x.label; markActive(x.id); live(); });
+      dots.append(d);
+    }
+    const colorInput = h('input', { class: 'sb-ap__color', attrs: { type: 'color', 'aria-label': 'Custom accent colour' } });
+    colorInput.value = a.accentCustom;
+    const customDot = h('label', { class: ['sb-ap__dot', 'sb-ap__dot--custom', s.accent === 'custom' && 'is-active'], dataset: { id: 'custom' }, style: { '--c': a.accentCustom } }, colorInput, icon('edit', 12));
+    colorInput.addEventListener('input', () => { a.accentCustom = colorInput.value; customDot.style.setProperty('--c', colorInput.value); s.accent = 'custom'; accentName.textContent = 'Custom'; markActive('custom'); live(); });
+    dots.append(customDot);
+    controls.append(section('Accent colour', null, h('div', { class: 'sb-ap__row' }, dots, accentName)));
 
     // ── Background
-    const bgGrid = h('div', { class: 'sb-swatches sb-swatches--bg' });
-    const none = h('button', { class: ['sb-bg-swatch', a.background.kind === 'none' && 'is-active'], attrs: { type: 'button' } }, h('span', { class: 'sb-bg-swatch__preview is-none' }, icon('x', 16)), h('span', null, 'None'));
-    none.addEventListener('click', () => { a.background.kind = 'none'; rerender(); });
-    bgGrid.append(none);
-    for (const [id, p] of Object.entries(BG_PRESETS)) {
-      const b = h('button', { class: ['sb-bg-swatch', a.background.kind === 'preset' && a.background.preset === id && 'is-active'], attrs: { type: 'button' } }, h('span', { class: 'sb-bg-swatch__preview', style: { background: p.css } }), h('span', null, p.label));
-      b.addEventListener('click', () => { a.background.kind = 'preset'; a.background.preset = id; rerender(); });
-      bgGrid.append(b);
-    }
+    const bgGrid = h('div', { class: 'sb-ap__grid sb-ap__grid--bg' });
+    const bgTile = (label: string, css: string | null, active: boolean, onPick: () => void, extra?: Node) => {
+      const tile = h('div', { class: ['sb-ap__tile', active && 'is-active'], attrs: { role: 'radio', tabindex: '0', 'aria-checked': String(active), 'aria-label': label } },
+        h('div', { class: ['sb-ap__swatch', !css && 'is-empty'], style: css ? { background: css } : {} }, extra ?? null),
+        h('div', { class: 'sb-ap__label' }, h('span', null, label), active ? icon('check', 13) : null));
+      pressable(tile, onPick);
+      return tile;
+    };
+    bgGrid.append(bgTile('None', null, a.background.kind === 'none', () => { a.background.kind = 'none'; rerender(); }, icon('x', 16)));
+    for (const [id, p] of Object.entries(BG_PRESETS)) bgGrid.append(bgTile(p.label, p.css, a.background.kind === 'preset' && a.background.preset === id, () => { a.background.kind = 'preset'; a.background.preset = id; rerender(); }));
     for (const path of ctx.port.listImages().slice(0, 24)) {
       const url = ctx.port.resourceUrl(path);
       if (!url) continue;
-      const b = h('button', { class: ['sb-bg-swatch', a.background.kind === 'image' && a.background.image === path && 'is-active'], attrs: { type: 'button', title: path } }, h('span', { class: 'sb-bg-swatch__preview', style: { background: `center / cover url("${url.replace(/"/g, '%22')}")` } }), h('span', null, path.split('/').pop()!.replace(/\.[^.]+$/, '')));
-      b.addEventListener('click', () => { a.background.kind = 'image'; a.background.image = path; rerender(); });
-      bgGrid.append(b);
+      bgGrid.append(bgTile(path.split('/').pop()!.replace(/\.[^.]+$/, ''), `center / cover no-repeat url("${url.replace(/"/g, '%22')}")`, a.background.kind === 'image' && a.background.image === path, () => { a.background.kind = 'image'; a.background.image = path; rerender(); }));
     }
     const file = h('input', { attrs: { type: 'file', accept: 'image/*', hidden: true } });
     file.addEventListener('change', async () => {
@@ -108,60 +158,64 @@ export const AppearancePage: PageDef = {
         rerender();
       });
     });
-    const upload = h('button', { class: 'sb-bg-swatch', attrs: { type: 'button' } }, h('span', { class: 'sb-bg-swatch__preview is-none' }, icon('plus', 18)), h('span', null, 'Upload'));
-    upload.addEventListener('click', () => file.click());
+    const upload = bgTile('Your photo', null, false, () => file.click(), icon('plus', 18));
+    upload.classList.add('is-upload');
     bgGrid.append(upload, file);
     const hasBg = a.background.kind !== 'none';
-    root.append(card({ title: 'Background', icon: 'layers', subtitle: 'Own images are stored in 00-System/Backgrounds inside your vault' },
+    controls.append(section('Background', 'Photos you add are stored in 00-System/Backgrounds in your vault.',
       bgGrid,
-      h('div', { class: 'sb-sliders' },
-        slider({ label: 'Blur', min: 0, max: 40, step: 1, value: a.background.blur, format: (v) => `${v}px`, disabled: !hasBg, onInput: (v) => { a.background.blur = v; live(); } }),
-        slider({ label: 'Dim', min: 0, max: 0.9, step: 0.05, value: a.background.dim, format: (v) => `${Math.round(v * 100)}%`, disabled: !hasBg, onInput: (v) => { a.background.dim = v; live(); } }))));
+      hasBg ? h('div', { class: 'sb-ap__sliders' },
+        slider({ label: 'Blur', min: 0, max: 40, step: 1, value: a.background.blur, format: (v) => `${v}px`, onInput: (v) => { a.background.blur = v; live(); } }),
+        slider({ label: 'Dim', min: 0, max: 0.9, step: 0.05, value: a.background.dim, format: (v) => `${Math.round(v * 100)}%`, onInput: (v) => { a.background.dim = v; live(); } })) : null));
 
     // ── Liquid glass
     const g = a.glass;
-    root.append(card({ title: 'Liquid glass', icon: 'sparkle', subtitle: 'Translucent, blurred surfaces with a soft light edge — best with a background' },
-      switchRow('Enable glass surfaces', g.enabled, (v) => { g.enabled = v; rerender(); }),
-      h('div', { class: 'sb-sliders' },
-        slider({ label: 'Frost (blur)', min: 0, max: 48, step: 1, value: g.blur, format: (v) => `${v}px`, disabled: !g.enabled, onInput: (v) => { g.blur = v; live(); } }),
-        slider({ label: 'Opacity', min: 0.1, max: 0.95, step: 0.05, value: g.opacity, format: (v) => `${Math.round(v * 100)}%`, disabled: !g.enabled, onInput: (v) => { g.opacity = v; live(); } }),
-        slider({ label: 'Colour saturation', min: 1, max: 2.4, step: 0.1, value: g.saturation, format: (v) => `${Math.round(v * 100)}%`, disabled: !g.enabled, onInput: (v) => { g.saturation = v; live(); } }),
-        slider({ label: 'Light edge', min: 0, max: 1, step: 0.05, value: g.highlight, format: (v) => `${Math.round(v * 100)}%`, disabled: !g.enabled, onInput: (v) => { g.highlight = v; live(); } })),
-      g.enabled && !hasBg ? h('p', { class: 'sb-muted sb-small' }, 'Tip: glass shines over a colourful background — try Aurora or Nebula.') : null,
-      h('p', { class: 'sb-muted sb-small' }, 'Blur effects use more GPU and battery, especially on phones. Lower “Frost” if scrolling feels slow.')));
+    controls.append(section('Liquid glass', g.enabled ? null : 'Frosted, translucent surfaces with a soft light edge. Looks best over a background.',
+      switchRow('Glass surfaces', g.enabled, (v) => { g.enabled = v; rerender(); }),
+      g.enabled ? h('div', { class: 'sb-ap__sliders' },
+        slider({ label: 'Frost', min: 0, max: 48, step: 1, value: g.blur, format: (v) => `${v}px`, onInput: (v) => { g.blur = v; live(); } }),
+        slider({ label: 'Opacity', min: 0.1, max: 0.95, step: 0.05, value: g.opacity, format: (v) => `${Math.round(v * 100)}%`, onInput: (v) => { g.opacity = v; live(); } }),
+        slider({ label: 'Saturation', min: 1, max: 2.4, step: 0.1, value: g.saturation, format: (v) => `${Math.round(v * 100)}%`, onInput: (v) => { g.saturation = v; live(); } }),
+        slider({ label: 'Light edge', min: 0, max: 1, step: 0.05, value: g.highlight, format: (v) => `${Math.round(v * 100)}%`, onInput: (v) => { g.highlight = v; live(); } })) : null,
+      g.enabled ? h('p', { class: 'sb-ap__note' }, 'Blur uses more battery on phones — lower “Frost” if scrolling stutters.') : null));
 
-    // ── Shape & density
-    root.append(card({ title: 'Shape & density', icon: 'kanban' },
-      h('div', { class: 'sb-sliders' },
+    // ── Shape & feel
+    controls.append(section('Shape & feel', null,
+      h('div', { class: 'sb-ap__sliders' },
         slider({ label: 'Corner radius', min: 0.4, max: 1.8, step: 0.1, value: a.radius, format: (v) => `${Math.round(v * 100)}%`, onInput: (v) => { a.radius = v; live(); } })),
-      h('div', { class: 'sb-appearance-row' }, h('span', { class: 'sb-appearance-row__label' }, 'Density'),
-        segmented([{ id: 'comfortable', label: 'Comfortable' }, { id: 'compact', label: 'Compact' }], s.density, (v) => { s.density = v as typeof s.density; ctx.saveSettings(); (ctx as unknown as { applySettings?: (x: typeof s) => void }).applySettings?.(s); }, { size: 'sm' })),
-      h('div', { class: 'sb-appearance-row' }, h('span', { class: 'sb-appearance-row__label' }, 'Motion'),
-        segmented([{ id: 'system', label: 'System' }, { id: 'off', label: 'Full' }, { id: 'on', label: 'Reduced' }], s.reduceMotion, (v) => { s.reduceMotion = v as typeof s.reduceMotion; ctx.saveSettings(); (ctx as unknown as { applySettings?: (x: typeof s) => void }).applySettings?.(s); }, { size: 'sm' }))));
+      h('div', { class: 'sb-ap__row' }, h('span', null, 'Density'),
+        segmented([{ id: 'comfortable', label: 'Comfortable' }, { id: 'compact', label: 'Compact' }], s.density, (v) => { s.density = v as Settings['density']; ctx.saveSettings(); ctx.applySettings?.(s); }, { size: 'sm' })),
+      h('div', { class: 'sb-ap__row' }, h('span', null, 'Motion'),
+        segmented([{ id: 'system', label: 'Auto' }, { id: 'off', label: 'Full' }, { id: 'on', label: 'Reduced' }], s.reduceMotion, (v) => { s.reduceMotion = v as Settings['reduceMotion']; ctx.saveSettings(); ctx.applySettings?.(s); }, { size: 'sm' }))));
 
-    // ── Bottom navigation
+    // ── Navigation
     const bn = s.bottomNav;
-    const picker = h('div', { class: 'sb-bn-picker' }, ...BN_CHOICES.map((c) => {
-      const idx = bn.items.indexOf(c.id);
-      const b = h('button', { class: ['sb-bn-choice', idx >= 0 && 'is-active'], attrs: { type: 'button', 'aria-pressed': String(idx >= 0) } }, icon(c.icon, 16), h('span', null, c.label), idx >= 0 ? h('span', { class: 'sb-bn-choice__n sb-num' }, String(idx + 1)) : null);
-      b.addEventListener('click', () => {
-        const i = bn.items.indexOf(c.id);
-        if (i >= 0) { if (bn.items.length <= 2) { toast('Keep at least two items.'); return; } bn.items.splice(i, 1); }
-        else { if (bn.items.length >= 6) { toast('Up to six items fit.'); return; } bn.items.push(c.id); }
-        rerender();
-      });
-      return b;
-    }));
-    root.append(card({ title: 'Bottom navigation bar', icon: 'list', subtitle: 'Replaces Obsidian’s toolbar on phones and small windows' },
-      h('div', { class: 'sb-appearance-row' }, h('span', { class: 'sb-appearance-row__label' }, 'Show'),
-        segmented([{ id: 'auto', label: 'Phones & small windows' }, { id: 'always', label: 'Always' }, { id: 'off', label: 'Never' }], bn.mode, (v) => { bn.mode = v as typeof bn.mode; rerender(); }, { size: 'sm' })),
-      switchRow('Hide Obsidian’s toolbar while the app is open', bn.hideObsidianBar, (v) => { bn.hideObsidianBar = v; rerender(); }),
-      h('p', { class: 'sb-muted sb-small' }, 'Tap to add or remove; the order follows your taps. “More” always gives access to every section and Obsidian’s file list and command palette.'),
-      picker));
+    controls.append(section('Navigation', 'On phones the sidebar opens from the menu button. A bottom bar is optional.',
+      switchRow('Hide Obsidian’s toolbar in the app', bn.hideObsidianBar, (v) => { bn.hideObsidianBar = v; rerender(); }),
+      h('div', { class: 'sb-ap__row' }, h('span', null, 'Bottom bar'),
+        segmented([{ id: 'off', label: 'Off' }, { id: 'auto', label: 'Phones' }, { id: 'always', label: 'Always' }], bn.mode, (v) => { bn.mode = v as typeof bn.mode; rerender(); }, { size: 'sm' })),
+      bn.mode !== 'off' ? h('div', { class: 'sb-ap__chips' }, ...BN_CHOICES.map((c) => {
+        const idx = bn.items.indexOf(c.id);
+        const el = h('div', { class: ['sb-ap__choice', idx >= 0 && 'is-active'], attrs: { role: 'checkbox', tabindex: '0', 'aria-checked': String(idx >= 0) } }, icon(c.icon, 15), h('span', null, c.label), idx >= 0 ? h('b', { class: 'sb-num' }, String(idx + 1)) : null);
+        pressable(el, () => {
+          const i = bn.items.indexOf(c.id);
+          if (i >= 0) { if (bn.items.length <= 2) { toast('Keep at least two items.'); return; } bn.items.splice(i, 1); }
+          else { if (bn.items.length >= 6) { toast('Up to six items fit.'); return; } bn.items.push(c.id); }
+          rerender();
+        });
+        return el;
+      })) : null));
+
+    root.append(h('div', { class: 'sb-ap' }, h('aside', { class: 'sb-ap__preview' }, preview.el), controls));
   },
 };
 
-/** Whole row is the tap target (label wraps the switch). */
+/** div-based control: immune to host button styling, keyboard accessible. */
+function pressable(el: HTMLElement, run: () => void) {
+  el.addEventListener('click', (e) => { if ((e.target as HTMLElement).tagName !== 'INPUT') run(); });
+  el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); run(); } });
+}
+
 function switchRow(label: string, checked: boolean, onChange: (v: boolean) => void) {
   const el = toggle(checked, onChange, label);
   el.classList.add('sb-switch--row');

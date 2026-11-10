@@ -73,7 +73,7 @@ Page render times on the demo vault (Chromium, measured in e2e): Home 15 ms, Tod
 - **Scroll jumped to the top after in-place updates (e.g. ticking a habit on iOS)**: the page was emptied before re-rendering, so the scroll height briefly collapsed. Now the new page is built off-DOM and swapped in one step, entrance animations are muted during such updates, and the scroll position is re-applied after layout.
 - Tapping the label of a switch row didn't toggle it → the whole row is now the tap target.
 - Phone sidebar overlay sat under its dimming layer (a background-layer rule outranked the mobile rules) → zero-specificity rule; sidebar items are tappable again.
-- Obsidian's mobile button styles broke the *More* sheet layout → our buttons no longer inherit Obsidian's height/shadow.
+- **Obsidian's global button styles** (`button:not(.clickable-icon)`) overrode app controls: grey pill buttons, collapsed theme/background previews, grey accent dots. Fix: at build time every app selector is raised to `.sbos-root.sbos-root …` and a neutral element reset sits in between (`scripts/css-scope.mjs`). The preview now loads `preview/obsidian-sim.css`, an approximation of Obsidian's element rules, *before* the app CSS, and e2e test 44 asserts that no app button shows the host button colour.
 - Primary buttons rendered without a visible label (a CSS reset outweighed the button colour) → resets moved into `:where()`.
 - Narrow layout: the workspace was placed into a 0 px grid column once the sidebar became an overlay → explicit grid placement.
 - Typing immediately after `Ctrl+K` / `C` could lose keystrokes (focus was set on the next frame) → focus set synchronously.
