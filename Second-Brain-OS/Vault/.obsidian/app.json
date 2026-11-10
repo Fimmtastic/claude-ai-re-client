@@ -1,0 +1,9 @@
+{
+  "alwaysUpdateLinks": true,
+  "newFileLocation": "folder",
+  "newFileFolderPath": "03-Knowledge/Inbox",
+  "attachmentFolderPath": "07-Resources/Attachments",
+  "showInlineTitle": true,
+  "readableLineLength": true,
+  "userIgnoreFilters": [".sbos/"]
+}

@@ -1,0 +1,135 @@
+/*
+ * Second Brain — Obsidian theme
+ * Shares the design tokens of the Second Brain OS plugin so the editor,
+ * reading view and the app feel like one product. Works without the plugin
+ * (falls back to system fonts).
+ */
+
+body {
+  --font-interface-theme: 'SB Inter', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
+  --font-text-theme: 'SB Inter', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
+  --font-monospace-theme: 'JetBrains Mono', 'SF Mono', ui-monospace, 'Cascadia Code', Menlo, Consolas, monospace;
+  --sb-display: 'SB Newsreader', 'Newsreader', 'Iowan Old Style', Charter, Georgia, serif;
+
+  --font-text-size: 16px;
+  --line-height-normal: 1.68;
+  --file-line-width: 720px;
+  --radius-s: 6px;
+  --radius-m: 10px;
+  --radius-l: 14px;
+
+  --h1-size: 1.9em; --h1-weight: 480; --h1-line-height: 1.15; --h1-font: var(--sb-display); --h1-letter-spacing: -0.02em;
+  --h2-size: 1.38em; --h2-weight: 640; --h2-line-height: 1.3; --h2-letter-spacing: -0.015em;
+  --h3-size: 1.15em; --h3-weight: 630; --h3-letter-spacing: -0.012em;
+  --h4-size: 1em; --h4-weight: 620;
+  --h5-size: .9em; --h6-size: .85em;
+  --inline-title-font: var(--sb-display);
+  --inline-title-size: 2.3em;
+  --inline-title-weight: 480;
+  --inline-title-line-height: 1.12;
+  --inline-title-letter-spacing: -0.02em;
+
+  --checkbox-radius: 50%;
+  --checkbox-size: 16px;
+  --callout-radius: 10px;
+  --callout-padding: 12px 16px;
+  --tag-radius: 999px;
+  --tag-padding-x: 8px;
+  --tag-padding-y: 2px;
+  --tag-size: .8em;
+  --tag-weight: 520;
+  --code-radius: 6px;
+  --table-header-weight: 600;
+  --link-decoration: none;
+  --link-external-decoration: none;
+  --nav-item-radius: 7px;
+  --tab-radius-active: 8px;
+}
+
+.theme-dark {
+  --color-base-00: #121315; --color-base-05: #141517; --color-base-10: #18191c; --color-base-20: #1d1e22; --color-base-25: #212227;
+  --color-base-30: #2a2b30; --color-base-35: #33343a; --color-base-40: #43444b; --color-base-50: #6e6f77; --color-base-60: #8b8c94;
+  --color-base-70: #a2a3aa; --color-base-100: #ececee;
+  --accent-h: 239; --accent-s: 84%; --accent-l: 74%;
+  --background-primary: #121315;
+  --background-primary-alt: #18191c;
+  --background-secondary: #141517;
+  --background-secondary-alt: #18191c;
+  --background-modifier-border: rgba(255, 255, 255, 0.07);
+  --background-modifier-border-hover: rgba(255, 255, 255, 0.12);
+  --background-modifier-hover: rgba(255, 255, 255, 0.04);
+  --background-modifier-active-hover: rgba(255, 255, 255, 0.06);
+  --text-normal: #ececee;
+  --text-muted: #a2a3aa;
+  --text-faint: #6e6f77;
+  --text-accent: #a9aafa;
+  --interactive-accent: #8586f4;
+  --interactive-accent-hover: #9596f6;
+  --text-selection: rgba(133, 134, 244, 0.22);
+  --code-background: #18191c;
+  --blockquote-border-color: rgba(133, 134, 244, 0.45);
+  --tag-background: rgba(133, 134, 244, 0.1);
+  --tag-color: #a9aafa;
+}
+
+.theme-light {
+  --color-base-00: #fcfbf9; --color-base-05: #f8f7f4; --color-base-10: #f6f5f1; --color-base-20: #f1efea; --color-base-25: #ebe9e3;
+  --color-base-30: #e3e0d9; --color-base-35: #d8d5cd; --color-base-40: #c6c2b9; --color-base-50: #9c988f; --color-base-60: #807c74;
+  --color-base-70: #69665f; --color-base-100: #1d1c1a;
+  --accent-h: 239; --accent-s: 68%; --accent-l: 62%;
+  --background-primary: #fcfbf9;
+  --background-primary-alt: #f6f5f1;
+  --background-secondary: #f6f5f1;
+  --background-secondary-alt: #f1efea;
+  --background-modifier-border: rgba(40, 34, 20, 0.09);
+  --background-modifier-border-hover: rgba(40, 34, 20, 0.15);
+  --background-modifier-hover: rgba(40, 34, 20, 0.045);
+  --text-normal: #1d1c1a;
+  --text-muted: #69665f;
+  --text-faint: #9c988f;
+  --text-accent: #4a4cc9;
+  --interactive-accent: #5a5ce0;
+  --interactive-accent-hover: #4d4fd2;
+  --text-selection: rgba(90, 92, 224, 0.16);
+  --code-background: #f1efea;
+  --blockquote-border-color: rgba(90, 92, 224, 0.4);
+  --tag-background: rgba(90, 92, 224, 0.08);
+  --tag-color: #4a4cc9;
+}
+
+/* Editorial reading & editing */
+.markdown-source-view.mod-cm6 .cm-content, .markdown-preview-view { font-feature-settings: 'cv11', 'ss01'; -webkit-font-smoothing: antialiased; }
+.markdown-rendered h1, .HyperMD-header-1 { font-family: var(--sb-display); }
+.markdown-rendered blockquote { font-family: var(--sb-display); font-style: italic; font-size: 1.08em; color: var(--text-muted); border-left-width: 2px; padding-left: 16px; }
+.markdown-rendered code, .cm-s-obsidian span.cm-inline-code { border: 1px solid var(--background-modifier-border); padding: .1em .35em; font-size: .86em; }
+.markdown-rendered pre { border: 1px solid var(--background-modifier-border); border-radius: 10px; }
+.markdown-rendered table { font-size: .92em; }
+.markdown-rendered th { text-transform: uppercase; letter-spacing: .04em; font-size: .82em; color: var(--text-muted); }
+.markdown-rendered td, .markdown-rendered th { border-left: 0 !important; border-right: 0 !important; }
+.markdown-rendered hr { border-color: var(--background-modifier-border); }
+.markdown-rendered img { border-radius: 10px; }
+
+/* Callouts: quiet surfaces, coloured icon only */
+.callout { border: 1px solid var(--background-modifier-border); background: var(--background-primary-alt); mix-blend-mode: normal; }
+.callout-title { font-weight: 620; letter-spacing: -0.005em; }
+.callout-title-inner { color: var(--text-normal); }
+.callout .callout-icon { color: rgb(var(--callout-color)); }
+
+/* Tasks */
+input[type='checkbox'] { border-width: 1.5px; transition: background-color 160ms cubic-bezier(.2,.8,.2,1), border-color 160ms; }
+.markdown-rendered .task-list-item.is-checked, .HyperMD-task-line[data-task='x'] { color: var(--text-faint); }
+
+/* Tags */
+a.tag, .cm-hashtag { border: 0; transition: background-color 140ms; }
+
+/* Chrome */
+.workspace-ribbon, .workspace-tab-header-container, .status-bar { transition: opacity 200ms; }
+.nav-file-title, .nav-folder-title { font-size: 13px; }
+.workspace-leaf-content[data-type='file-explorer'] .nav-folder-title-content { font-weight: 540; }
+.modal, .prompt, .menu { border: 0; box-shadow: 0 24px 64px -20px rgba(0, 0, 0, .45), 0 0 0 1px var(--background-modifier-border); border-radius: 14px; }
+.menu { border-radius: 11px; padding: 5px; }
+.menu-item { border-radius: 7px; }
+.suggestion-item.is-selected { border-radius: 8px; }
+.view-header-title { font-weight: 560; letter-spacing: -0.005em; }
+
+@media (prefers-reduced-motion: reduce) { * { transition-duration: 1ms !important; } }

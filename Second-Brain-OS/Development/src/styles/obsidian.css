@@ -1,0 +1,26 @@
+/* ───────── Obsidian integration (public CSS hooks only) ───────── */
+
+/* The app view owns its full leaf: no header, no padding. */
+.workspace-leaf-content[data-type='second-brain-os'] > .view-header { display: none; }
+.workspace-leaf-content[data-type='second-brain-os'] > .view-content.sbos-view { padding: 0; overflow: hidden; background: var(--sb-bg, var(--background-primary)); }
+.sbos-view > .sb-app { height: 100%; }
+
+/* Immersive mode — only while the app is the active leaf. Everything returns as soon as you open a note. */
+body.sbos-immersive .workspace-ribbon.mod-left { display: none; }
+body.sbos-immersive .status-bar { display: none; }
+body.sbos-immersive .workspace-split.mod-root .workspace-tab-header-container { display: none; }
+body.sbos-immersive .workspace-split.mod-root > .workspace-tabs > .workspace-tab-container { border-top: 0; }
+body.sbos-immersive.is-frameless:not(.is-fullscreen) .workspace-split.mod-root .workspace-tabs .workspace-tab-container { padding-top: 0; }
+body.sbos-immersive .workspace-split.mod-root { background: var(--sb-bg); }
+/* keep window drag region + traffic lights usable on frameless mac windows */
+body.sbos-immersive.is-frameless.mod-macos:not(.is-fullscreen) .sb-sidebar { padding-top: 40px; -webkit-app-region: drag; }
+body.sbos-immersive.is-frameless.mod-macos:not(.is-fullscreen) .sb-sidebar * { -webkit-app-region: no-drag; }
+body.sbos-immersive.is-frameless:not(.mod-macos) .sb-topbar { -webkit-app-region: drag; }
+body.sbos-immersive.is-frameless:not(.mod-macos) .sb-topbar * { -webkit-app-region: no-drag; }
+body.sbos-immersive .titlebar { background: var(--sb-bg); }
+
+/* Mobile: Obsidian supplies its own chrome; the app adapts via container queries. */
+body.is-mobile .workspace-leaf-content[data-type='second-brain-os'] .sb-topbar { padding-left: var(--sb-2); }
+body.is-mobile .sb-task__more, body.is-mobile .sb-task__pull { opacity: 1; }
+body.is-phone .sb-board { grid-template-columns: repeat(var(--cols), 82%); scroll-snap-type: x mandatory; }
+body.is-phone .sb-board__col { scroll-snap-align: start; }

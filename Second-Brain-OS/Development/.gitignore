@@ -1,0 +1,4 @@
+node_modules/
+preview/dist/
+tests/e2e/screenshots/*.png
+!tests/e2e/screenshots/.gitkeep

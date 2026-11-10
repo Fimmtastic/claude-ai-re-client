@@ -1,0 +1,6 @@
+/* Preview-only host styles (Obsidian provides these in-app) */
+html, body { margin: 0; height: 100%; }
+body { background: var(--sb-bg); }
+.preview-host { position: fixed; inset: 0; display: flex; }
+.preview-host > .sb-app { flex: 1; }
+.markdown-rendered h2 { font-size: 1.25em; }

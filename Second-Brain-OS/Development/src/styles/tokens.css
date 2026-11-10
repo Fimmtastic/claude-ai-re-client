@@ -1,0 +1,144 @@
+/*
+ * Second Brain OS — Design tokens
+ * ───────────────────────────────
+ * Surfaces step up in small, even increments; borders are hairlines;
+ * one accent, used for focus, selection, progress and the current datum.
+ * Light mode is warm paper; dark mode is graphite, never pure black.
+ */
+
+.sbos-root,
+body.sbos-app-active {
+  /* type */
+  --sb-font: 'SB Inter', 'Inter var', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI Variable Text', 'Segoe UI', system-ui, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+  --sb-font-display: 'SB Newsreader', 'Newsreader', 'Iowan Old Style', 'Charter', Georgia, 'Noto Serif', serif;
+  --sb-font-mono: 'JetBrains Mono', 'SF Mono', ui-monospace, 'Cascadia Code', Menlo, Consolas, monospace;
+
+  --sb-text-display: 2.75rem;   /* 44 — hero greeting */
+  --sb-lh-display: 1.08;
+  --sb-text-h1: 1.75rem;        /* 28 — page headline */
+  --sb-lh-h1: 1.2;
+  --sb-text-h2: 0.9375rem;      /* 15 — section header */
+  --sb-lh-h2: 1.4;
+  --sb-text-h3: 0.9375rem;      /* 15 — card title */
+  --sb-text-body: 0.875rem;     /* 14 */
+  --sb-lh-body: 1.55;
+  --sb-text-meta: 0.78125rem;   /* 12.5 */
+  --sb-lh-meta: 1.4;
+  --sb-text-label: 0.6875rem;   /* 11 */
+  --sb-text-number: 1.625rem;   /* 26 — stats */
+
+  /* spacing: 4px base */
+  --sb-1: 4px; --sb-2: 8px; --sb-3: 12px; --sb-4: 16px; --sb-5: 20px; --sb-6: 24px; --sb-8: 32px; --sb-10: 40px; --sb-12: 48px; --sb-16: 64px;
+  --sb-radius-xs: 5px;
+  --sb-radius-sm: 7px;
+  --sb-radius: 10px;
+  --sb-radius-lg: 14px;
+  --sb-radius-xl: 18px;
+
+  /* motion */
+  --sb-ease-out: cubic-bezier(.2, .8, .2, 1);
+  --sb-ease-in-out: cubic-bezier(.4, 0, .2, 1);
+  --sb-ease-spring: cubic-bezier(.34, 1.4, .64, 1);
+  --sb-fast: 140ms;
+  --sb-base: 200ms;
+  --sb-slow: 240ms;
+
+  /* layout */
+  --sb-sidebar-w: 236px;
+  --sb-sidebar-collapsed: 64px;
+  --sb-context-w: 312px;
+  --sb-topbar-h: 52px;
+  --sb-page-max: 1180px;
+  --sb-page-pad-x: 48px;
+}
+
+/* ───────── Dark (default) ───────── */
+.sbos-root,
+body.theme-dark .sbos-root,
+body.theme-dark.sbos-app-active {
+  color-scheme: dark;
+  --sb-bg: #121315;
+  --sb-surface-0: #141517;
+  --sb-surface-1: #18191c;
+  --sb-surface-2: #1d1e22;
+  --sb-surface-3: #24252a;
+  --sb-surface-hover: rgba(255, 255, 255, 0.035);
+  --sb-surface-active: rgba(255, 255, 255, 0.06);
+  --sb-border: rgba(255, 255, 255, 0.065);
+  --sb-border-strong: rgba(255, 255, 255, 0.11);
+  --sb-text: #ececee;
+  --sb-text-2: #a2a3aa;
+  --sb-text-3: #6e6f77;
+  --sb-text-inverse: #111214;
+  --sb-shadow-sm: 0 1px 0 rgba(255, 255, 255, 0.03) inset, 0 1px 2px rgba(0, 0, 0, 0.3);
+  --sb-shadow: 0 1px 0 rgba(255, 255, 255, 0.035) inset, 0 6px 20px -8px rgba(0, 0, 0, 0.55);
+  --sb-shadow-lg: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 24px 60px -16px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.06);
+  --sb-backdrop: rgba(6, 6, 8, 0.56);
+  --sb-ok: #5cc28f;
+  --sb-warn: #e0a959;
+  --sb-danger: #ec7272;
+  --sb-heat-0: rgba(255, 255, 255, 0.045);
+  --sb-skeleton: rgba(255, 255, 255, 0.05);
+  --sb-skeleton-hi: rgba(255, 255, 255, 0.09);
+
+  --sb-accent: #8586f4;
+  --sb-accent-text: #a9aafa;
+}
+.sbos-root[data-accent='blue'], body.theme-dark .sbos-root[data-accent='blue'] { --sb-accent: #5c9dff; --sb-accent-text: #8ab8ff; }
+.sbos-root[data-accent='teal'], body.theme-dark .sbos-root[data-accent='teal'] { --sb-accent: #3fbfa6; --sb-accent-text: #6fd6c1; }
+.sbos-root[data-accent='amber'], body.theme-dark .sbos-root[data-accent='amber'] { --sb-accent: #e3a548; --sb-accent-text: #efc27f; }
+.sbos-root[data-accent='rose'], body.theme-dark .sbos-root[data-accent='rose'] { --sb-accent: #ec7891; --sb-accent-text: #f4a2b4; }
+.sbos-root[data-accent='graphite'], body.theme-dark .sbos-root[data-accent='graphite'] { --sb-accent: #b9bac2; --sb-accent-text: #d6d7dc; }
+
+/* ───────── Light ───────── */
+body.theme-light .sbos-root,
+body.theme-light.sbos-app-active {
+  color-scheme: light;
+  --sb-bg: #f6f5f1;
+  --sb-surface-0: #f8f7f4;
+  --sb-surface-1: #fcfbf9;
+  --sb-surface-2: #ffffff;
+  --sb-surface-3: #f1efea;
+  --sb-surface-hover: rgba(40, 34, 20, 0.04);
+  --sb-surface-active: rgba(40, 34, 20, 0.07);
+  --sb-border: rgba(40, 34, 20, 0.085);
+  --sb-border-strong: rgba(40, 34, 20, 0.14);
+  --sb-text: #1d1c1a;
+  --sb-text-2: #69665f;
+  --sb-text-3: #9c988f;
+  --sb-text-inverse: #ffffff;
+  --sb-shadow-sm: 0 1px 2px rgba(40, 34, 20, 0.06);
+  --sb-shadow: 0 1px 2px rgba(40, 34, 20, 0.05), 0 8px 24px -12px rgba(40, 34, 20, 0.14);
+  --sb-shadow-lg: 0 24px 64px -20px rgba(40, 34, 20, 0.28), 0 0 0 1px rgba(40, 34, 20, 0.08);
+  --sb-backdrop: rgba(36, 32, 24, 0.22);
+  --sb-ok: #2f9a66;
+  --sb-warn: #b97a1d;
+  --sb-danger: #cc4a4a;
+  --sb-heat-0: rgba(40, 34, 20, 0.06);
+  --sb-skeleton: rgba(40, 34, 20, 0.06);
+  --sb-skeleton-hi: rgba(40, 34, 20, 0.1);
+
+  --sb-accent: #5a5ce0;
+  --sb-accent-text: #4a4cc9;
+}
+body.theme-light .sbos-root[data-accent='blue'] { --sb-accent: #2f6fdc; --sb-accent-text: #2861c4; }
+body.theme-light .sbos-root[data-accent='teal'] { --sb-accent: #138a78; --sb-accent-text: #0f7666; }
+body.theme-light .sbos-root[data-accent='amber'] { --sb-accent: #b6771c; --sb-accent-text: #9a6416; }
+body.theme-light .sbos-root[data-accent='rose'] { --sb-accent: #c9445f; --sb-accent-text: #b13a53; }
+body.theme-light .sbos-root[data-accent='graphite'] { --sb-accent: #4b4b53; --sb-accent-text: #3a3a41; }
+
+.sbos-root {
+  --sb-accent-soft: color-mix(in srgb, var(--sb-accent) 14%, transparent);
+  --sb-accent-softer: color-mix(in srgb, var(--sb-accent) 8%, transparent);
+  --sb-accent-border: color-mix(in srgb, var(--sb-accent) 38%, transparent);
+  --sb-focus-ring: 0 0 0 2px var(--sb-bg), 0 0 0 4px color-mix(in srgb, var(--sb-accent) 70%, transparent);
+  --sb-heat-1: color-mix(in srgb, var(--sb-accent) 26%, var(--sb-heat-0));
+  --sb-heat-2: color-mix(in srgb, var(--sb-accent) 48%, var(--sb-heat-0));
+  --sb-heat-3: color-mix(in srgb, var(--sb-accent) 72%, var(--sb-heat-0));
+  --sb-heat-4: var(--sb-accent);
+}
+
+.sb-density-compact {
+  --sb-text-body: 0.8125rem;
+  --sb-page-pad-x: 32px;
+}

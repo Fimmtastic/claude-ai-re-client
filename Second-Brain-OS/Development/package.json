@@ -1,0 +1,30 @@
+{
+  "name": "second-brain-core",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Second Brain OS \u2014 core Obsidian plugin (app shell, data layer, modules)",
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/build.mjs --watch",
+    "build": "tsc --noEmit && node scripts/build.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "bench": "vitest run tests/performance.test.ts",
+    "preview": "node scripts/build.mjs --preview",
+    "e2e": "node scripts/build.mjs --preview && node tests/e2e/preview.e2e.mjs",
+    "seed": "node scripts/seed-demo.mjs",
+    "seed:clean": "node scripts/seed-demo.mjs --clean",
+    "e2e:plugin": "node scripts/build.mjs --preview && node tests/e2e/plugin.e2e.mjs"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@fontsource-variable/inter": "^5.1.0",
+    "@fontsource-variable/newsreader": "^5.1.0",
+    "@types/node": "^22.10.2",
+    "esbuild": "^0.24.2",
+    "obsidian": "^1.8.7",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.8",
+    "yaml": "^2.6.1"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "id": "second-brain-core",
+  "name": "Second Brain OS",
+  "version": "1.0.0",
+  "minAppVersion": "1.5.0",
+  "description": "A personal operating system: dashboard, tasks, projects, goals, worklogs, knowledge, journal and reviews — on plain Markdown.",
+  "author": "Second Brain OS",
+  "isDesktopOnly": false
+}
