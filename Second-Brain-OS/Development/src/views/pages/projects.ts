@@ -201,7 +201,7 @@ export const ProjectPage: PageDef = {
         items: sortTasks(regular, t),
         columnOf: (x) => x.status,
         key: (x) => x.id,
-        render: (x) => taskRow(ctx, x, { showProject: false, compact: true }),
+        render: (x) => taskRow(ctx, x, { showProject: false, compact: true, noSwipe: true }),
         move: (x, to) => ctx.run(to === 'done' ? 'Task completed' : 'Task moved', () => ctx.actions.setTaskStatus(x, to as TaskStatus), { undoable: true }),
       }));
     } else {

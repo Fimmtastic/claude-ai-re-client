@@ -50,6 +50,19 @@ await p.waitForTimeout(500);
 ok('settings persisted via saveData', await p.evaluate(() => !!window.__plugin.data?.ui?.route));
 await p.evaluate(() => window.__plugin.scaffold());
 ok('scaffold creates only missing folders', await p.evaluate(() => window.__notice.log.some((m) => m.includes('Second Brain'))), await p.evaluate(() => window.__notice.log.join(' | ')));
+// obsidian://second-brain URI actions (iOS Shortcuts / share sheet)
+const uri = await p.evaluate(async () => {
+  const pl = window.__plugin;
+  await pl.handleUri({ add: 'task', text: 'URI Testaufgabe morgen !high' });
+  await pl.handleUri({ add: 'idea', text: 'Idee aus dem Share Sheet' });
+  await pl.handleUri({ route: 'tasks', capture: 'task', text: 'vorbefüllt' });
+  const t = pl.store.snapshot().tasks.find((x) => x.text === 'URI Testaufgabe');
+  return { task: t && { due: t.due, prio: t.priority }, idea: pl.store.snapshot().notes.some((n) => n.title.startsWith('Idee – Idee aus')), capture: document.querySelector('.sb-capture input.sb-input--lg')?.value, route: pl.settings.ui.route };
+});
+const tomorrow = await p.evaluate(() => { const d = new Date(); d.setDate(d.getDate() + 1); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; });
+ok('URI add=task (quick-add syntax)', uri.task?.due === tomorrow && uri.task?.prio === 'high', JSON.stringify(uri.task));
+ok('URI add=idea', uri.idea);
+ok('URI route + capture prefilled', uri.route === 'tasks' && uri.capture === 'vorbefüllt', JSON.stringify(uri));
 await b.close();
 for (const r of res) console.log(r.join('  '));
 if (errors.length) console.log('errors:', errors);

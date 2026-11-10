@@ -159,6 +159,8 @@ export class Plugin extends Component {
   addRibbonIcon() { return document.createElement('div'); }
   addSettingTab() {}
   addCommand(c: { id: string; name: string }) { this.commands.push(c); return c; }
+  protocolHandlers: Record<string, (p: Record<string, string>) => void> = {};
+  registerObsidianProtocolHandler(action: string, fn: (p: Record<string, string>) => void) { this.protocolHandlers[action] = fn; }
 }
 
 export class ItemView extends Component {

@@ -32,11 +32,13 @@
 - Custom backgrounds are loaded via `vault.getResourcePath`. Very large images (> 15 MB) are refused at upload.
 
 ## Mobile / tablet
-The plugin isn't desktop-only and the layout uses container queries (sidebar and context panel become overlays below 760 px; the top-bar menu button opens navigation). Not tested on real devices:
-- Drag-and-drop (project board, dashboard reorder) relies on HTML5 DnD, which doesn't work with touch on iOS/Android. Use the status menu / move buttons instead (dashboard edit mode has ↑/↓ buttons; projects have a status menu).
-- Hover-only affordances (task ⋯ menu) are forced visible on mobile via `body.is-mobile`.
-- Keyboard shortcuts obviously need a hardware keyboard.
-- Backups use the vault adapter and should work on mobile, but that wasn't tested.
+Phones and tablets are first-class (see *Mobile* in the user guide). Verified in Chromium with a 390×844 touch viewport, simulated touch gestures and an approximation of Obsidian's element styles, **not on a physical iPhone or Android device**. Known limits:
+- Drag-and-drop (project board columns, dashboard reorder) uses HTML5 drag events, which touch browsers don't send. On phones use the task's swipe/long-press menu, the project status menu, or the ↑/↓ buttons in dashboard edit mode.
+- Swipe gestures need Pointer Events with `pointerType: touch` (iOS 13+, Android Chrome). On older WebViews rows still work by tap and the ⋯ menu.
+- Keyboard shortcuts need a hardware keyboard (iPad keyboards work, including Escape for sheets).
+- Glass blur is GPU-heavy; on touch devices the battery-friendly mode (default) blurs only bars, sidebar and sheets.
+- `obsidian://second-brain` links require Obsidian to be installed and the vault name to match (`vault=` parameter). iOS may ask for confirmation the first time a Shortcut opens Obsidian.
+- Backups use the vault adapter and should work on mobile, but that wasn't tested on a device.
 
 ## Not implemented (yet)
 - Editing worklog body sections inside the app form after creation. Creation uses the form; later edits happen in Markdown (properties can be changed via the editor's properties panel).

@@ -8,6 +8,7 @@ import { button, iconButton } from '../ui/components/basic';
 import type { AppContext, CaptureMode, CapturePreset, PageDef } from './context';
 import { NAV, routeForKind } from './meta';
 import { applyAppearance } from './appearance-apply';
+import { edgeSwipe, trackVisualViewport } from '../ui/touch';
 import { PAGES } from './pages';
 import type { DataStore, Snapshot } from '../core/store';
 import { BG_PRESETS } from './appearance-apply';
@@ -50,6 +51,7 @@ export class AppShell implements AppContext {
   private main!: HTMLElement;
   private pageEl!: HTMLElement;
   private crumbsEl!: HTMLElement;
+  private titleEl!: HTMLElement;
   private actionsEl!: HTMLElement;
   private contextEl!: HTMLElement;
   private contextBody!: HTMLElement;
@@ -179,7 +181,7 @@ export class AppShell implements AppContext {
     this.bottomNav = h('nav', { class: 'sb-bottomnav', attrs: { 'aria-label': 'Quick navigation' } });
     // tap-outside scrim for the overlay sidebar on narrow screens
     const scrim = h('div', { class: 'sb-scrim', attrs: { 'aria-hidden': 'true' } });
-    scrim.addEventListener('click', () => { this.root.classList.remove('is-collapsed'); this.settings.ui.sidebarCollapsed = false; this.saveSettings(); });
+    scrim.addEventListener('click', () => this.root.classList.remove('is-collapsed'));
     this.root.append(this.bgEl, this.buildSidebar(), this.buildMain(), this.buildContext(), this.bottomNav, scrim);
     this.applyAppearance();
     container.append(this.root);
@@ -187,6 +189,16 @@ export class AppShell implements AppContext {
     this.unsub.push(() => overlay.remove());
     this.unsub.push(installTooltips(this.root));
     this.unsub.push(installTooltips(overlay));
+    this.unsub.push(trackVisualViewport());
+    // compact title in the top bar once the large page title is out of view (phones)
+    let scrolled = false;
+    this.main.addEventListener('scroll', () => {
+      const v = this.main.scrollTop > 64;
+      if (v !== scrolled) { scrolled = v; this.root.classList.toggle('is-scrolled', v); }
+    }, { passive: true });
+    edgeSwipe(this.root, this.sidebar, () => this.root.classList.contains('is-collapsed'), (open) => {
+      this.root.classList.toggle('is-collapsed', open);
+    });
     this.root.addEventListener('keydown', (e) => this.onKey(e));
     this.unsub.push(this.store.events.on('change', () => this.scheduleRender()));
     this.navigate(this.settings.ui.route || 'home', { replace: true, initial: true });
@@ -310,6 +322,7 @@ export class AppShell implements AppContext {
 
   private buildMain() {
     this.crumbsEl = h('div', { class: 'sb-crumbs' });
+    this.titleEl = h('div', { class: 'sb-topbar__title', attrs: { 'aria-hidden': 'true' } });
     this.actionsEl = h('div', { class: 'sb-topbar__page-actions' });
     const topbar = h('header', { class: 'sb-topbar' },
       iconButton('panel-left', 'Menu', () => this.toggleSidebar(), { class: 'sb-topbar__menu' }),
@@ -317,9 +330,11 @@ export class AppShell implements AppContext {
         iconButton('back', 'Back  Alt ←', () => this.back(), { class: 'sb-hist-back' }),
         iconButton('forward', 'Forward  Alt →', () => this.forward(), { class: 'sb-hist-fwd' })),
       this.crumbsEl,
+      this.titleEl,
       h('div', { class: 'sb-topbar__actions' },
         this.actionsEl,
-        button({ icon: 'command', title: `Command palette  ${modKey} K`, variant: 'ghost', size: 'sm', onClick: () => this.palette('>') }),
+        button({ icon: 'command', title: `Command palette  ${modKey} K`, variant: 'ghost', size: 'sm', onClick: () => this.palette('>'), class: 'sb-topbar__cmd' }),
+        iconButton('search', 'Search', () => this.palette(), { class: 'sb-topbar__search' }),
         button({ icon: 'plus', label: 'Capture', variant: 'primary', size: 'sm', shortcut: 'C', onClick: () => this.capture(), class: 'sb-capture-btn' }),
         iconButton('panel-right', 'Context panel  ]', () => this.toggleContextPanel())));
     this.pageEl = h('div', { class: 'sb-page' });
@@ -336,6 +351,11 @@ export class AppShell implements AppContext {
   }
 
   private toggleSidebar() {
+    if (this.root.clientWidth <= 760) {
+      // phones: the sidebar is a transient overlay; don't touch the desktop preference
+      this.root.classList.toggle('is-collapsed');
+      return;
+    }
     this.settings.ui.sidebarCollapsed = !this.settings.ui.sidebarCollapsed;
     this.root.classList.toggle('is-collapsed', this.settings.ui.sidebarCollapsed);
     this.sidebar.querySelectorAll<HTMLElement>('.sb-nav__item').forEach((a) => {
@@ -371,7 +391,7 @@ export class AppShell implements AppContext {
     }
     this.page?.dispose?.();
     // on narrow layouts the sidebar is an overlay: close it after choosing a destination
-    if (this.root.clientWidth <= 760 && this.root.classList.contains('is-collapsed')) { this.root.classList.remove('is-collapsed'); this.settings.ui.sidebarCollapsed = false; }
+    if (this.root.clientWidth <= 760) this.root.classList.remove('is-collapsed');
     this.route = r;
     this.page = page;
     this.param = rest.length ? rest.join('/') : undefined;
@@ -421,7 +441,17 @@ export class AppShell implements AppContext {
     this.renderNavCounts();
     this.renderCrumbs();
     clear(this.actionsEl);
-    for (const a of page.actions?.(this, this.param) ?? []) this.actionsEl.append(a);
+    const pageActions = page.actions?.(this, this.param) ?? [];
+    if (this.root.clientWidth <= 760 && pageActions.length > 1) {
+      // phones: one overflow button instead of a row of icons that would squeeze the title
+      const more = iconButton('more', 'Page actions', () => menu(pageActions.map((b) => ({
+        label: b.getAttribute('aria-label') || b.textContent || 'Action',
+        icon: undefined,
+        disabled: (b as HTMLButtonElement).disabled,
+        run: () => b.click(),
+      })), more, { align: 'end', title: page.title(this, this.param) }));
+      this.actionsEl.append(more);
+    } else for (const a of pageActions) this.actionsEl.append(a);
 
     const draw = () => {
       try {
@@ -477,6 +507,8 @@ export class AppShell implements AppContext {
 
   private renderCrumbs() {
     clear(this.crumbsEl);
+    this.titleEl.textContent = this.page ? this.page.title(this, this.param) : '';
+    this.root.classList.toggle('no-large-title', ['note', 'home'].includes(this.page?.id ?? ''));
     const page = this.page!;
     const crumbs = page.crumbs?.(this, this.param) ?? [];
     const all = [...crumbs, { label: page.title(this, this.param) }];

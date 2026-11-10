@@ -57,6 +57,8 @@ export function applyAppearance(el: HTMLElement, s: Settings, _port: VaultPort) 
   st.setProperty('--sb-glass-sat', String(clamp(a.glass.saturation, 1, 2.5)));
   st.setProperty('--sb-glass-hl', String(clamp(a.glass.highlight, 0, 1)));
   el.classList.toggle('is-glass', a.glass.enabled);
+  const touch = typeof matchMedia !== 'undefined' && (matchMedia('(pointer: coarse)').matches || document.body.classList.contains('is-mobile'));
+  el.classList.toggle('glass-lite', a.glass.enabled && a.glass.mobileLite !== false && touch);
 }
 
 const clamp = (n: number, a: number, b: number) => Math.max(a, Math.min(b, Number.isFinite(n) ? n : a));

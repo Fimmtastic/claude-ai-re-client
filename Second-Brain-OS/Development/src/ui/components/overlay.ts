@@ -2,6 +2,7 @@ import { h } from '../dom';
 import { icon } from '../icons';
 import { animate, EASE_OUT, EASE_IN_OUT } from '../motion';
 import { button } from './basic';
+import { isPhoneWidth, isTouchDevice } from '../touch';
 
 /**
  * Overlays live in a single layer element inside the app root so they inherit
@@ -143,8 +144,9 @@ export interface MenuItem {
 
 let openMenu: (() => void) | null = null;
 
-export function menu(items: MenuItem[], anchor: { x: number; y: number } | HTMLElement, opts: { align?: 'start' | 'end'; minWidth?: number } = {}) {
+export function menu(items: MenuItem[], anchor: { x: number; y: number } | HTMLElement, opts: { align?: 'start' | 'end'; minWidth?: number; title?: string } = {}) {
   openMenu?.();
+  if (isPhoneWidth() && isTouchDevice()) return actionSheet(items, opts.title);
   const l = getLayer();
   const list = h('div', { class: 'sb-menu', attrs: { role: 'menu' }, style: { minWidth: `${opts.minWidth ?? 200}px` } });
   const buttons: HTMLButtonElement[] = [];
@@ -195,6 +197,46 @@ export function menu(items: MenuItem[], anchor: { x: number; y: number } | HTMLE
   return close;
 }
 
+/** Phone variant of menus: a bottom action sheet with large rows and a cancel button. */
+export function actionSheet(items: MenuItem[], title?: string): () => void {
+  const l = getLayer();
+  const sheet = h('div', { class: 'sb-actionsheet', attrs: { role: 'menu', 'aria-label': title ?? 'Actions' } });
+  const group = h('div', { class: 'sb-actionsheet__group' });
+  if (title) group.append(h('div', { class: 'sb-actionsheet__title' }, title));
+  for (const it of items) {
+    if (it.separator) { group.append(h('div', { class: 'sb-actionsheet__sep' })); continue; }
+    const b = h('button', { class: ['sb-actionsheet__item', it.danger && 'is-danger', it.checked && 'is-checked'], attrs: { type: 'button', role: 'menuitem' } },
+      h('span', { class: 'sb-actionsheet__icon' }, it.checked ? icon('check', 17) : it.icon ? icon(it.icon, 17) : null),
+      h('span', { class: 'sb-actionsheet__label' }, it.label));
+    b.disabled = !!it.disabled;
+    b.addEventListener('click', () => { close(); it.run?.(); });
+    group.append(b);
+  }
+  const cancel = h('button', { class: 'sb-actionsheet__cancel', attrs: { type: 'button' } }, 'Cancel');
+  cancel.addEventListener('click', () => close());
+  sheet.append(group, cancel);
+  const backdrop = h('div', { class: 'sb-backdrop sb-backdrop--sheet' }, sheet);
+  backdrop.addEventListener('click', (e) => { if (e.target === backdrop) close(); });
+  l.append(backdrop);
+  const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); } };
+  document.addEventListener('keydown', onKey, true);
+  animate(backdrop, [{ opacity: 0 }, { opacity: 1 }], { duration: 180, easing: EASE_OUT });
+  animate(sheet, [{ transform: 'translateY(100%)' }, { transform: 'none' }], { duration: 260, easing: EASE_OUT });
+  let closed = false;
+  function close() {
+    if (closed) return;
+    closed = true;
+    document.removeEventListener('keydown', onKey, true);
+    if (openMenu === close) openMenu = null;
+    animate(backdrop, [{ opacity: 1 }, { opacity: 0 }], { duration: 180, easing: EASE_IN_OUT, fill: 'forwards' });
+    const a = animate(sheet, [{ transform: 'none' }, { transform: 'translateY(100%)' }], { duration: 200, easing: EASE_IN_OUT, fill: 'forwards' });
+    if (a) a.onfinish = () => backdrop.remove();
+    else backdrop.remove();
+  }
+  openMenu = close;
+  return close;
+}
+
 /* ─────────────────────────  Tooltips  ───────────────────────── */
 
 /** Delegated tooltip for any element with [data-tip]. One element, no per-node listeners. */
@@ -223,6 +265,7 @@ export function installTooltips(root: HTMLElement) {
     current = null;
   };
   root.addEventListener('pointerover', (e) => {
+    if (e.pointerType === 'touch') return; // no tooltips on touch: they'd stick after a tap
     const el = (e.target as HTMLElement).closest<HTMLElement>('[data-tip]');
     if (!el || el === current) return;
     hide();

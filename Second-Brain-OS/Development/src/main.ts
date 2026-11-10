@@ -7,6 +7,9 @@ import { AppShell } from './views/shell';
 import { log } from './core/logger';
 import { DEFAULT_FOLDERS } from './core/schema';
 import type { PaletteCommand } from './ui/components/palette';
+import { parseQuickTask } from './core/quick-parse';
+import { today } from './core/dates';
+import type { CaptureMode } from './views/context';
 
 export const VIEW_TYPE = 'second-brain-os';
 
@@ -34,6 +37,8 @@ export default class SecondBrainPlugin extends Plugin {
     this.addRibbonIcon('brain-circuit', 'Open Second Brain', () => void this.activate());
     this.addSettingTab(new SecondBrainSettingTab(this.app, this));
     this.registerCommands();
+    // obsidian://second-brain?…  — for iOS Shortcuts, share sheet, home-screen icons, Siri
+    this.registerObsidianProtocolHandler('second-brain', (params) => void this.handleUri(params));
 
     this.app.workspace.onLayoutReady(async () => {
       await log.time('store.init', () => this.store.init());
@@ -146,6 +151,42 @@ export default class SecondBrainPlugin extends Plugin {
     ];
   }
 
+  /**
+   * URI actions (all parameters URL-encoded):
+   *   route=today|tasks|worklogs|project/<path>…      open a page
+   *   capture=task|idea|note|worklog|journal|…&text=   open the capture form, prefilled
+   *   add=task&text=…  (quick-add syntax: morgen !high @Projekt)   add silently
+   *   add=idea&text=…  ·  add=journal&text=…                         add silently
+   */
+  async handleUri(p: Record<string, string>) {
+    try {
+      const text = (p.text ?? '').trim();
+      if (p.add) {
+        if (!this.store.snapshot().ready) await this.store.init();
+        if (!text) { new Notice('Second Brain: nothing to add (text is empty).'); return; }
+        if (p.add === 'task') {
+          const q = parseQuickTask(text, today(), this.store.snapshot().projects.map((x) => x.basename));
+          await this.actions.addTask({ text: q.text, due: q.due ?? (p.due || undefined), priority: q.priority, recurrence: q.recurrence, project: q.project ?? (p.project || undefined) });
+          new Notice(`✓ Task added: ${q.text}`);
+        } else if (p.add === 'idea') {
+          await this.actions.create({ kind: 'note', title: `Idee – ${text.split('\n')[0]!.slice(0, 60)}`, body: text, topic: 'Inbox', extra: { tags: ['idea'] } });
+          new Notice('✓ Idea captured');
+        } else if (p.add === 'journal') {
+          const path = await this.actions.ensureJournal();
+          await this.actions.appendToSection(path, ['gedanken', 'thoughts'], text);
+          new Notice('✓ Added to today’s journal');
+        } else new Notice(`Second Brain: unknown add type “${p.add}”.`);
+        if (p.open !== '1') return;
+      }
+      await this.activate(p.route || undefined);
+      const shell = this.anyShell();
+      if (shell && p.capture) shell.capture(p.capture as CaptureMode, { text, due: p.due, project: p.project });
+    } catch (e) {
+      log.error('URI action failed', e);
+      new Notice(`Second Brain: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+
   /** Runs a built-in Obsidian command if available (app.commands is not part of the typed API, so this is guarded). */
   private runObsidianCommand(id: string) {
     const cmds = (this.app as App & { commands?: { executeCommandById?(id: string): boolean } }).commands;
@@ -240,6 +281,19 @@ class SecondBrainSettingTab extends PluginSettingTab {
     new Setting(containerEl).setName('Locale').setDesc('Date formatting, e.g. de-DE or en-GB.').addText((t) => t.setValue(s.locale).onChange((v) => { try { new Intl.DateTimeFormat(v); s.locale = v; save(); } catch { /* ignore invalid */ } }));
 
     new Setting(containerEl).setName('Appearance studio').setDesc('Themes, accent colour, backgrounds, liquid glass, corner radius and the bottom navigation bar — with live preview.').addButton((b) => b.setButtonText('Open').setCta().onClick(() => void this.plugin.activate('appearance')));
+    containerEl.createEl('h3', { text: 'Shortcuts & widgets (iOS / Android)' });
+    containerEl.createEl('p', { cls: 'setting-item-description', text: 'Use these links in Apple Shortcuts (“Open URL”), as home-screen bookmarks, from the share sheet or with Siri. Text goes URL-encoded into text=… and supports the quick-add syntax (morgen, fri, !high, @Projekt, every week).' });
+    const vault = encodeURIComponent(this.app.vault.getName());
+    const links: [string, string][] = [
+      ['Add task silently', `obsidian://second-brain?vault=${vault}&add=task&text=`],
+      ['Capture idea silently', `obsidian://second-brain?vault=${vault}&add=idea&text=`],
+      ['Add to today’s journal', `obsidian://second-brain?vault=${vault}&add=journal&text=`],
+      ['Open quick capture', `obsidian://second-brain?vault=${vault}&capture=task`],
+      ['New worklog form', `obsidian://second-brain?vault=${vault}&capture=worklog`],
+      ['Open Today', `obsidian://second-brain?vault=${vault}&route=today`],
+      ['Open Tasks', `obsidian://second-brain?vault=${vault}&route=tasks`],
+    ];
+    for (const [name, url] of links) new Setting(containerEl).setName(name).setDesc(url).addButton((b) => b.setButtonText('Copy').onClick(async () => { await navigator.clipboard.writeText(url); new Notice('Link copied'); }));
     containerEl.createEl('h3', { text: 'Experience' });
     new Setting(containerEl).setName('Open on startup').addToggle((t) => t.setValue(s.openOnStartup).onChange((v) => { s.openOnStartup = v; save(); }));
     new Setting(containerEl).setName('Immersive mode').setDesc('Hide ribbon, tab bar and status bar while Second Brain is the active tab. Markdown editing is unaffected.').addToggle((t) => t.setValue(s.immersive).onChange((v) => { s.immersive = v; save(); }));

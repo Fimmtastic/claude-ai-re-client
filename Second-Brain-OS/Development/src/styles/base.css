@@ -15,10 +15,12 @@
 .sbos-root ::selection { background: var(--sb-accent-soft); }
 /* Neutral element reset: beats Obsidian's global `button`/`a` rules, loses to every
    component rule (those are boosted to .sbos-root.sbos-root … at build time). */
-:is(.sbos-root) button { background: none; box-shadow: none; border: 0; border-radius: 0; height: auto; min-height: 0; padding: 0; margin: 0; font: inherit; color: inherit; align-items: normal; justify-content: normal; white-space: normal; text-align: inherit; line-height: inherit; letter-spacing: inherit; opacity: 1; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+:is(.sbos-root) button { -webkit-appearance: none; appearance: none; background: none; box-shadow: none; border: 0; border-radius: 0; height: auto; min-height: 0; padding: 0; margin: 0; font: inherit; color: inherit; align-items: normal; justify-content: normal; white-space: normal; text-align: inherit; line-height: inherit; letter-spacing: inherit; opacity: 1; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 :is(.sbos-root) button:hover, :is(.sbos-root) button:active { background: none; box-shadow: none; }
 :is(.sbos-root) a { color: inherit; text-decoration: none; }
 :is(.sbos-root) input, :is(.sbos-root) select, :is(.sbos-root) textarea { font: inherit; }
+/* iOS WebKit paints native gradients / inner shadows on form controls */
+:is(.sbos-root) input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']), :is(.sbos-root) textarea, :is(.sbos-root) select { -webkit-appearance: none; appearance: none; border-radius: var(--sb-radius-sm); }
 :where(.sbos-root) :where(h1, h2, h3, h4, p) { margin: 0; }
 :where(.sbos-root) :where(ul, ol) { margin: 0; padding: 0; }
 .sbos-root kbd { font-family: var(--sb-font); }
@@ -173,10 +175,11 @@
 }
 @container (max-width: 760px) {
   .sb-app, .sb-app.is-collapsed, .sb-app.has-context, .sb-app.is-collapsed.has-context { grid-template-columns: 0 minmax(0, 1fr) 0; }
-  .sb-sidebar { position: absolute; z-index: 20; inset: 0 auto 0 0; width: var(--sb-sidebar-w); transform: translateX(-100%); transition: transform var(--sb-slow) var(--sb-ease-out); box-shadow: var(--sb-shadow-lg); }
+  .sb-sidebar { position: absolute; z-index: 20; inset: 0 auto 0 0; width: var(--sb-sidebar-w); transform: translateX(-100%); transition: transform var(--sb-slow) var(--sb-ease-out), box-shadow var(--sb-slow); box-shadow: none; }
+  .sb-app.is-collapsed .sb-sidebar { box-shadow: var(--sb-shadow-lg); }
   .sb-app.is-collapsed .sb-sidebar { transform: none; }
   .sb-app.is-collapsed .sb-sidebar * { opacity: 1 !important; pointer-events: auto !important; }
-  .sb-context { position: absolute; z-index: 20; inset: 0 0 0 auto; width: min(var(--sb-context-w), 92%); transform: translateX(100%); transition: transform var(--sb-slow) var(--sb-ease-out); }
+  .sb-context { position: absolute; z-index: 20; inset: 0 0 0 auto; width: min(var(--sb-context-w), 92%); transform: translateX(100%); transition: transform var(--sb-slow) var(--sb-ease-out); box-shadow: none; }
   .sb-app.has-context .sb-context { transform: none; visibility: visible; box-shadow: var(--sb-shadow-lg); }
   .sb-page { padding: var(--sb-6) var(--sb-4) var(--sb-12); }
   .sb-crumbs { display: none; }

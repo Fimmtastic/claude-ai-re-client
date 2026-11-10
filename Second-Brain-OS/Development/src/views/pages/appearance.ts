@@ -177,7 +177,8 @@ export const AppearancePage: PageDef = {
         slider({ label: 'Opacity', min: 0.1, max: 0.95, step: 0.05, value: g.opacity, format: (v) => `${Math.round(v * 100)}%`, onInput: (v) => { g.opacity = v; live(); } }),
         slider({ label: 'Saturation', min: 1, max: 2.4, step: 0.1, value: g.saturation, format: (v) => `${Math.round(v * 100)}%`, onInput: (v) => { g.saturation = v; live(); } }),
         slider({ label: 'Light edge', min: 0, max: 1, step: 0.05, value: g.highlight, format: (v) => `${Math.round(v * 100)}%`, onInput: (v) => { g.highlight = v; live(); } })) : null,
-      g.enabled ? h('p', { class: 'sb-ap__note' }, 'Blur uses more battery on phones — lower “Frost” if scrolling stutters.') : null));
+      g.enabled ? switchRow('Battery-friendly on phones', g.mobileLite !== false, (v) => { g.mobileLite = v; live(); }) : null,
+      g.enabled ? h('p', { class: 'sb-ap__note' }, 'On phones, only bars, sidebar and sheets are blurred; cards stay translucent. Turn off for full glass everywhere (uses more battery).') : null));
 
     // ── Shape & feel
     controls.append(section('Shape & feel', null,

@@ -9,7 +9,7 @@ import { exportTrainingRecord, skills, worklogWeek, weeklyTotals, worklogMinutes
 import { addDays, fmt, parseISO, startOfWeek, toISO, weekKey, range } from '../../core/dates';
 import { formatMinutes } from '../../core/schema';
 
-interface WState { view: 'timeline' | 'calendar' | 'week' | 'skills'; project: string; tech: string; q: string; month: string; week: string; context: string }
+interface WState { view: 'timeline' | 'calendar' | 'week' | 'skills'; project: string; tech: string; q: string; month: string; week: string; context: string; day?: string }
 
 function wlCard(ctx: AppContext, w: Worklog) {
   const el = h('article', { class: 'sb-wl', dataset: { flip: `wl-${w.path}` }, attrs: { tabindex: '0' } },
@@ -127,7 +127,7 @@ function calendar(ctx: AppContext, logs: Worklog[], st: WState) {
     const items = byDate.get(d) ?? [];
     const min = items.reduce((s, w) => s + (w.minutes ?? 0), 0);
     const inMonth = d.slice(0, 7) === st.month;
-    const cell = h('div', { class: ['sb-cal__day', !inMonth && 'is-out', d === ctx.today() && 'is-today', items.length > 0 && 'has-items'], style: { '--load': String(min / maxMin) } },
+    const cell = h('div', { class: ['sb-cal__day', !inMonth && 'is-out', d === ctx.today() && 'is-today', items.length > 0 && 'has-items', st.day === d && 'is-selected'], style: { '--load': String(min / maxMin) }, attrs: { role: 'button', tabindex: '0', 'aria-label': `${d}: ${items.length} worklogs` } },
       h('div', { class: 'sb-cal__num sb-num' }, String(Number(d.slice(8)))),
       ...items.slice(0, 3).map((w) => {
         const a = h('a', { class: 'sb-cal__item', attrs: { href: '#', title: w.title } }, w.title);
@@ -135,11 +135,23 @@ function calendar(ctx: AppContext, logs: Worklog[], st: WState) {
         return a;
       }),
       items.length > 3 ? h('span', { class: 'sb-cal__more' }, `+${items.length - 3}`) : null,
-      min ? h('span', { class: 'sb-cal__min sb-num' }, formatMinutes(min)) : null);
+      min ? h('span', { class: 'sb-cal__min sb-num' }, formatMinutes(min)) : null,
+      items.length ? h('span', { class: 'sb-cal__dots' }, ...items.slice(0, 3).map(() => h('i'))) : null);
+    cell.addEventListener('click', (e) => { if ((e.target as HTMLElement).closest('.sb-cal__item')) return; st.day = st.day === d ? undefined : d; ctx.refresh(); });
+    cell.addEventListener('keydown', (e) => { if (e.key === 'Enter') { st.day = d; ctx.refresh(); } });
     cell.addEventListener('dblclick', () => ctx.capture('worklog', { due: d }));
     grid.append(cell);
   }
-  return h('div', { class: 'sb-cal-wrap' }, nav, grid, h('p', { class: 'sb-muted sb-small' }, 'Double-click a day to log work for it.'));
+  const sel = st.day ? byDate.get(st.day) ?? [] : [];
+  const dayPanel = st.day
+    ? h('div', { class: 'sb-cal__panel' },
+        h('div', { class: 'sb-cal__panel-head' },
+          h('h3', null, fmt(st.day, ctx.settings.locale, { weekday: 'long', day: 'numeric', month: 'long' })),
+          h('span', { class: 'sb-grow' }),
+          button({ label: 'Log work', icon: 'plus', size: 'sm', variant: 'subtle', onClick: () => ctx.capture('worklog', { due: st.day }) })),
+        sel.length ? h('div', { class: 'sb-wl-list' }, ...sel.map((w) => wlCard(ctx, w))) : h('p', { class: 'sb-muted sb-small' }, 'No worklog on this day.'))
+    : h('p', { class: 'sb-muted sb-small' }, 'Tap a day to see its entries · double-click to log work.');
+  return h('div', { class: 'sb-cal-wrap' }, nav, grid, dayPanel);
 }
 
 function weekView(ctx: AppContext, logs: Worklog[], st: WState) {

@@ -63,7 +63,14 @@ export function scopeCss(css) {
       if (/^@(media|container|supports|layer)\b/.test(p)) out += `${p}{${scopeCss(body)}}\n`;
       else out += `${p}{${body}}\n`;
     } else {
-      out += `${splitTopLevel(p).map(boostSelector).join(',')}{${body}}\n`;
+      // Hover styles only on devices that really hover: avoids "sticky" hover
+      // states after a tap on phones/tablets.
+      const sels = splitTopLevel(p).map(boostSelector);
+      const isHover = (x) => x.includes(':hover') && !x.startsWith(':is(.sbos-root)'); // element reset must also neutralise host hover on touch
+      const hover = sels.filter(isHover);
+      const rest = sels.filter((x) => !isHover(x));
+      if (rest.length) out += `${rest.join(',')}{${body}}\n`;
+      if (hover.length) out += `@media (hover: hover){${hover.join(',')}{${body}}}\n`;
     }
     i = j;
   }

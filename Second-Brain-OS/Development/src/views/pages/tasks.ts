@@ -162,7 +162,7 @@ export const TodayPage: PageDef = {
       left.append(sectionTitle('Suggested'));
       const sug = h('div', { class: 'sb-tasklist' });
       for (const x of [...soon, ...suggestions]) {
-        const row = taskRow(ctx, x, { compact: true });
+        const row = taskRow(ctx, x, { compact: true, noSwipe: true });
         row.append(button({ label: 'Today', size: 'sm', variant: 'subtle', class: 'sb-task__pull', onClick: () => ctx.run('Planned for today', () => ctx.actions.setTaskDue(x, t), { undoable: true }) }));
         sug.append(row);
       }

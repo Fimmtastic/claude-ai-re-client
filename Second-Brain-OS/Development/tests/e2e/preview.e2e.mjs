@@ -375,6 +375,122 @@ await check('appearance: light mode + custom accent + desktop glass', async () =
   await p.close();
 });
 
+// ───────── Mobile (390×844, touch, Obsidian-like element styles, body.is-mobile) ─────────
+async function openPhone(route = 'home') {
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 });
+  page.on('pageerror', (e) => errors.push(`[phone/${route}] ${e.message}`));
+  await page.clock.setFixedTime(new Date('2026-11-10T10:30:00'));
+  await page.goto(`${url}?theme=dark&mobile=1&route=${encodeURIComponent(route)}`);
+  await page.waitForFunction(() => window.__sbosReady === true);
+  await page.waitForTimeout(400);
+  return page;
+}
+const touch = (p, sel, type, x, y) => p.evaluate(([s, t, cx, cy]) => {
+  const el = document.querySelector(s);
+  el.dispatchEvent(new PointerEvent(t, { pointerType: 'touch', pointerId: 11, bubbles: true, cancelable: true, clientX: cx, clientY: cy, isPrimary: true }));
+}, [sel, type, x, y]);
+
+await check('mobile: every page fits the width, inputs ≥ 16px (no iOS zoom)', async () => {
+  const p = await openPhone();
+  const bad = [];
+  for (const r of routes) {
+    await p.evaluate((x) => window.__sbos.shell.navigate(x), r);
+    await settle(p, 450);
+    const res = await p.evaluate(() => {
+      const m = document.querySelector('.sb-main');
+      const small = [...document.querySelectorAll('.sb-page input:not([type=range]):not([type=color]):not([type=checkbox]):not([type=file]), .sb-page textarea, .sb-page select')].filter((e) => parseFloat(getComputedStyle(e).fontSize) < 16).length;
+      return { overflow: m.scrollWidth - m.clientWidth, small };
+    });
+    if (res.overflow > 1 || res.small) bad.push(`${r}: overflow ${res.overflow}px, small inputs ${res.small}`);
+  }
+  assert(!bad.length, bad.join(' · '));
+  await p.close();
+});
+
+await check('mobile: swipe right completes a task, swipe left moves it to tomorrow', async () => {
+  const p = await openPhone('tasks');
+  await p.evaluate(() => { window.__sbos.shell.state('tasks', {}).view = 'today'; window.__sbos.shell.refresh(); });
+  await settle(p, 400);
+  const first = await p.evaluate(() => document.querySelector('.sb-swipe .sb-task .sb-task__text').textContent.trim());
+  const box = await p.evaluate(() => { const r = document.querySelector('.sb-swipe .sb-task').getBoundingClientRect(); return { x: r.left + 60, y: r.top + r.height / 2 }; });
+  await touch(p, '.sb-swipe .sb-task', 'pointerdown', box.x, box.y);
+  for (const dx of [12, 40, 80, 130]) await touch(p, '.sb-swipe .sb-task', 'pointermove', box.x + dx, box.y);
+  assert(await p.$('.sb-swipe.arm-right'), 'right action not armed');
+  await p.screenshot({ path: path.join(shots, 'phone-swipe.png') });
+  await touch(p, '.sb-swipe .sb-task', 'pointerup', box.x + 130, box.y);
+  await settle(p, 900);
+  const st = await p.evaluate((t) => window.__sbos.store.snapshot().tasks.find((x) => x.text === t)?.status, first);
+  assert(st === 'done', `${first} is ${st}`);
+  // swipe left on the next open task
+  const second = await p.evaluate(() => document.querySelector('.sb-swipe .sb-task.is-todo .sb-task__text, .sb-swipe .sb-task.is-doing .sb-task__text').textContent.trim());
+  const sel = '.sb-swipe .sb-task.is-todo, .sb-swipe .sb-task.is-doing';
+  const b2 = await p.evaluate((s) => { const r = document.querySelector(s).getBoundingClientRect(); return { x: r.left + 250, y: r.top + r.height / 2 }; }, sel);
+  await touch(p, sel, 'pointerdown', b2.x, b2.y);
+  for (const dx of [-12, -50, -100, -140]) await touch(p, sel, 'pointermove', b2.x + dx, b2.y);
+  await touch(p, sel, 'pointerup', b2.x - 140, b2.y);
+  await settle(p, 900);
+  const due = await p.evaluate((t) => window.__sbos.store.snapshot().tasks.find((x) => x.text === t)?.due, second);
+  assert(due === '2026-11-11', `${second} due ${due}`);
+  await p.close();
+});
+
+await check('mobile: long-press opens an action sheet; Escape closes it', async () => {
+  const p = await openPhone('tasks');
+  const b = await p.evaluate(() => { const r = document.querySelector('.sb-task').getBoundingClientRect(); return { x: r.left + 80, y: r.top + 20 }; });
+  await touch(p, '.sb-task', 'pointerdown', b.x, b.y);
+  await settle(p, 650);
+  assert(await p.$('.sb-actionsheet'), 'no action sheet');
+  const rows = await p.$$eval('.sb-actionsheet__item', (e) => e.map((x) => x.getBoundingClientRect().height));
+  assert(rows.every((h) => h >= 48), `rows too small: ${rows.join(',')}`);
+  await p.screenshot({ path: path.join(shots, 'phone-actionsheet.png') });
+  await p.keyboard.press('Escape');
+  await settle(p, 400);
+  assert(!(await p.$('.sb-actionsheet')), 'sheet still open');
+  await p.close();
+});
+
+await check('mobile: top bar — compact title after scrolling, page actions in overflow menu', async () => {
+  const p = await openPhone('worklogs');
+  const op0 = await p.$eval('.sb-topbar__title', (e) => getComputedStyle(e).opacity);
+  await p.evaluate(() => { document.querySelector('.sb-main').scrollTop = 400; document.querySelector('.sb-main').dispatchEvent(new Event('scroll')); });
+  await settle(p, 400);
+  const op1 = await p.$eval('.sb-topbar__title', (e) => getComputedStyle(e).opacity);
+  assert(op0 === '0' && op1 === '1', `title opacity ${op0} → ${op1}`);
+  const note = await p.evaluate(() => window.__sbos.store.snapshot().notes.find((n) => n.basename === 'VLAN').path);
+  await p.evaluate((x) => window.__sbos.shell.navigate('note/' + x), note);
+  await settle(p, 500);
+  const n = await p.$$eval('.sb-topbar__page-actions .sb-btn', (e) => e.length);
+  assert(n === 1, `${n} page action buttons on phone`);
+  const titleW = await p.$eval('.sb-topbar__title', (e) => e.getBoundingClientRect().width);
+  assert(titleW > 120, `title squeezed to ${titleW}px`);
+  await p.close();
+});
+
+await check('mobile: calendar day tap shows that day’s entries', async () => {
+  const p = await openPhone('worklogs');
+  await p.evaluate(() => { const s = window.__sbos.shell.state('worklogs', {}); s.view = 'calendar'; s.month = '2026-11'; window.__sbos.shell.refresh(); });
+  await settle(p, 400);
+  await p.click('.sb-cal__day[aria-label^="2026-11-09"]');
+  await settle(p, 400);
+  const txt = await p.textContent('.sb-cal__panel');
+  assert(txt.includes('VLAN-Konzept Entwurf'), 'panel missing entry');
+  await p.screenshot({ path: path.join(shots, 'phone-calendar.png') });
+  await p.close();
+});
+
+await check('mobile: sidebar opens by edge swipe and closes by swipe', async () => {
+  const p = await openPhone('home');
+  await touch(p, '.sb-app', 'pointerdown', 5, 400);
+  await touch(p, '.sb-app', 'pointermove', 80, 404);
+  await settle(p, 400);
+  assert(await p.evaluate(() => document.querySelector('.sb-app').classList.contains('is-collapsed')), 'edge swipe did not open');
+  await touch(p, '.sb-sidebar', 'pointerdown', 200, 400);
+  await touch(p, '.sb-sidebar', 'pointermove', 120, 402);
+  await settle(p, 400);
+  assert(await p.evaluate(() => !document.querySelector('.sb-app').classList.contains('is-collapsed')), 'swipe did not close');
+  await p.close();
+});
+
 await browser.close();
 for (const r of results) console.log(r.join('  '));
 if (errors.length) { console.log('\nRuntime errors:'); for (const e of errors) console.log('  ' + e); }

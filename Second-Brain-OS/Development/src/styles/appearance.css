@@ -221,3 +221,9 @@ body.is-mobile .sbos-root .sb-kbd { display: none; }
   .sb-app.is-collapsed .sb-sidebar__search { justify-content: flex-start; padding: 0 var(--sb-2) 0 10px; }
   .sb-app.is-collapsed .sb-brand { padding-left: var(--sb-2); }
 }
+
+/* battery-friendly glass on touch devices: no backdrop blur on content surfaces */
+.sbos-root.is-glass.glass-lite :is(.sb-card, .sb-stats--wide .sb-stat, .sb-wl__body, .sb-board__col, .sb-project-grid .sb-project-row, .sb-quickadd, .sb-searchbar, .sb-list--card, .sb-gantt, .sb-cal__day) {
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+  background: var(--sb-glass-sheen), color-mix(in srgb, var(--sb-surface-1) calc(min(1, var(--sb-glass-opacity) + 0.18) * 100%), transparent);
+}

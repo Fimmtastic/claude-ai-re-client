@@ -51,6 +51,8 @@ export interface Appearance {
     opacity: number; // 0.15..0.95 surface opacity
     saturation: number; // 1..2.2
     highlight: number; // 0..1 specular edge strength
+    /** phones: blur only chrome (bars, sheets); cards stay translucent without blur */
+    mobileLite: boolean;
   };
   radius: number; // 0.5..1.6 scale
 }
@@ -67,7 +69,7 @@ export const DEFAULT_APPEARANCE: Appearance = {
   theme: 'graphite',
   accentCustom: '#7c7ff2',
   background: { kind: 'none', preset: 'aurora', image: '', blur: 0, dim: 0.35 },
-  glass: { enabled: false, blur: 22, opacity: 0.55, saturation: 1.6, highlight: 0.55 },
+  glass: { enabled: false, blur: 22, opacity: 0.55, saturation: 1.6, highlight: 0.55, mobileLite: true },
   radius: 1,
 };
 

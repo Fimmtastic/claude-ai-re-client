@@ -7,8 +7,8 @@ All results below come from the last run in the build environment (Node 22, Chro
 | TypeScript strict typecheck | `npm run typecheck` | ✅ 0 errors (`strict`, `noUncheckedIndexedAccess`, `noImplicitOverride`) |
 | Unit + integration (vitest) | `npm test` | ✅ **36 / 36** |
 | Performance benchmark | `npm run bench` | ✅ within budget (numbers below) |
-| End-to-end, real app in Chromium | `npm run e2e` | ✅ **45 / 45**, 0 runtime errors |
-| Plugin entry vs Obsidian API mock | `node tests/e2e/plugin.e2e.mjs` | ✅ **13 / 13**, 0 runtime errors |
+| End-to-end, real app in Chromium (desktop + phone) | `npm run e2e` | ✅ **51 / 51**, 0 runtime errors |
+| Plugin entry vs Obsidian API mock | `node tests/e2e/plugin.e2e.mjs` | ✅ **16 / 16**, 0 runtime errors |
 | Real Obsidian | — | ⚠️ **not run**: launching the Obsidian binary wasn't permitted in this environment (see LIMITATIONS) |
 
 ## Unit / integration (`tests/core.test.ts`, `tests/store-actions.test.ts`)
@@ -66,10 +66,22 @@ Page render times on the demo vault (Chromium, measured in e2e): Home 15 ms, Tod
 44. Phone viewport: navigation is the sidebar by default (bottom bar off); the menu button opens it, tapping outside and choosing a destination close it. Appearance: theme *Midnight*, background *Aurora* and glass apply live (data attributes, `backdrop-filter` active). The bottom bar is visible, navigates and shows the active item; the *More* sheet lists all sections.
 45. Light mode + custom accent `#e0603a` resolves to the exact accent variable; desktop glass screenshots.
 
+## Mobile end-to-end (390×844, touch, `body.is-mobile`, simulated Obsidian element styles)
+46. Every page: no horizontal overflow; every text input, textarea and select ≥ 16 px (no iOS zoom).
+47. Swipe right on a task arms the action and completes it; swipe left on another moves it to tomorrow (checked in the Markdown-backed store).
+48. Long-press opens the action sheet with rows ≥ 48 px; Escape closes it.
+49. Top bar: compact title hidden at the top and visible after scrolling; in the note reader the page actions collapse into one ⋯ button and the title keeps > 120 px.
+50. Worklog calendar: tapping a day shows its entries.
+51. Sidebar opens by edge swipe and closes by swiping it away.
+
 ## Plugin entry (`tests/e2e/plugin.e2e.mjs`) — `main.ts` + `obsidian-mock.ts`
-`onload` runs without errors · the view opens on startup · 16 commands registered · immersive body classes set · sidebars collapsed · dashboard renders with data · opening a note removes immersive mode · the editor gets a *Back to Second Brain* action · **the app tab isn't replaced by the editor** (found and fixed) · task write through `vault.process` · backup through `vault.adapter` · settings persisted through `saveData` · scaffold command runs.
+`onload` runs without errors · the view opens on startup · 16 commands registered · immersive body classes set · sidebars collapsed · dashboard renders with data · opening a note removes immersive mode · the editor gets a *Back to Second Brain* action · **the app tab isn't replaced by the editor** (found and fixed) · task write through `vault.process` · backup through `vault.adapter` · settings persisted through `saveData` · scaffold command runs · **`obsidian://second-brain` links**: `add=task` with quick-add syntax (due tomorrow, high priority), `add=idea`, `route` + prefilled `capture`.
 
 ## Bugs found by these tests and fixed
+- **Shadow of the closed phone sidebar darkened the left ~40 px of every screen** (visible on light buttons) → shadow only while open (same for the context panel).
+- iOS/WebKit native form-control appearance → `appearance: none` for app buttons and inputs.
+- Hover styles stuck after taps on touch screens → at build time every `:hover` rule is wrapped in `@media (hover: hover)`.
+- Plugin test mock lacked `registerObsidianProtocolHandler` (the real API has it) → added, so the URI handler is now exercised.
 - **Scroll jumped to the top after in-place updates (e.g. ticking a habit on iOS)**: the page was emptied before re-rendering, so the scroll height briefly collapsed. Now the new page is built off-DOM and swapped in one step, entrance animations are muted during such updates, and the scroll position is re-applied after layout.
 - Tapping the label of a switch row didn't toggle it → the whole row is now the tap target.
 - Phone sidebar overlay sat under its dimming layer (a background-layer rule outranked the mobile rules) → zero-specificity rule; sidebar items are tappable again.

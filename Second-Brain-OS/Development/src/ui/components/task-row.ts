@@ -6,6 +6,7 @@ import { pulse, animate, EASE_SPRING } from '../motion';
 import type { Task, Priority } from '../../core/types';
 import type { AppContext } from '../../views/context';
 import { addDays, diffDays, relativeDay } from '../../core/dates';
+import { isTouchDevice, longPress, swipeRow } from '../touch';
 
 /** Renders text with [[links]] as interactive spans (no innerHTML of user data). */
 export function richText(ctx: AppContext, text: string, fromPath: string): DocumentFragment {
@@ -34,6 +35,8 @@ export interface TaskRowOpts {
   showFile?: boolean;
   compact?: boolean;
   draggable?: boolean;
+  /** disable swipe actions (e.g. inside boards or rows with extra controls) */
+  noSwipe?: boolean;
 }
 
 export function taskRow(ctx: AppContext, t: Task, opts: TaskRowOpts = {}): HTMLElement {
@@ -112,8 +115,8 @@ export function taskRow(ctx: AppContext, t: Task, opts: TaskRowOpts = {}): HTMLE
     if (e.key === ' ' || e.key === 'x') { e.preventDefault(); toggle(); }
     else if (e.key === 'Enter') { e.preventDefault(); startEdit(); }
     else if (e.key === 'e') { e.preventDefault(); ctx.edit(t.path, { line: t.line }); }
-    else if (e.key === 'ArrowDown' || e.key === 'j') { e.preventDefault(); (row.nextElementSibling as HTMLElement | null)?.focus(); }
-    else if (e.key === 'ArrowUp' || e.key === 'k') { e.preventDefault(); (row.previousElementSibling as HTMLElement | null)?.focus(); }
+    else if (e.key === 'ArrowDown' || e.key === 'j') { e.preventDefault(); siblingTask(row, 1)?.focus(); }
+    else if (e.key === 'ArrowUp' || e.key === 'k') { e.preventDefault(); siblingTask(row, -1)?.focus(); }
     else if (e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10')) { e.preventDefault(); openMenu(more); }
   });
   if (opts.draggable) {
@@ -124,7 +127,26 @@ export function taskRow(ctx: AppContext, t: Task, opts: TaskRowOpts = {}): HTMLE
     });
     row.addEventListener('dragend', () => row.classList.remove('is-dragging'));
   }
+  if (isTouchDevice()) {
+    longPress(row, (pt) => openMenu(pt));
+    if (!opts.noSwipe && !opts.draggable) {
+      const today = ctx.today();
+      return swipeRow(row, {
+        right: done
+          ? { label: 'Reopen', icon: 'undo', tone: 'accent', run: () => void ctx.run('Task reopened', () => ctx.actions.setTaskStatus(t, 'todo'), { undoable: true }) }
+          : { label: 'Done', icon: 'check', tone: 'ok', run: () => void ctx.run('Task completed', () => ctx.actions.setTaskStatus(t, 'done'), { undoable: true }) },
+        left: done ? undefined : { label: 'Tomorrow', icon: 'calendar', tone: 'warn', run: () => void ctx.run('Moved to tomorrow', () => ctx.actions.setTaskDue(t, addDays(today, 1)), { undoable: true }) },
+      });
+    }
+  }
   return row;
+}
+
+function siblingTask(row: HTMLElement, dir: 1 | -1): HTMLElement | null {
+  const list = row.closest('.sb-tasklist, .sb-board__list, .sb-vlist');
+  if (!list) return null;
+  const all = [...list.querySelectorAll<HTMLElement>('.sb-task')];
+  return all[all.indexOf(row) + dir] ?? null;
 }
 
 export function taskMenu(ctx: AppContext, t: Task, anchor: HTMLElement | { x: number; y: number }, edit?: () => void) {
@@ -146,7 +168,7 @@ export function taskMenu(ctx: AppContext, t: Task, anchor: HTMLElement | { x: nu
     ...(edit ? [{ label: 'Rename', icon: 'edit', hint: 'Enter', run: edit }] : []),
     { label: 'Open in note', icon: 'external', hint: 'E', run: () => ctx.edit(t.path, { line: t.line }) },
     { label: 'Delete task', icon: 'trash', danger: true, run: async () => { if (await confirm({ title: 'Delete task?', text: `“${t.text}” will be removed from ${t.path.split('/').pop()}. You can undo this.`, confirm: 'Delete', danger: true })) void ctx.run('Task deleted', () => ctx.actions.deleteTask(t), { undoable: true }); } },
-  ], anchor);
+  ], anchor, { title: t.text.replace(/\[\[([^\]|]+)\|?([^\]]*)\]\]/g, (_m, a: string, b: string) => b || a) });
 }
 
 export function taskList(ctx: AppContext, tasks: Task[], opts: TaskRowOpts & { empty?: HTMLElement; limit?: number } = {}) {

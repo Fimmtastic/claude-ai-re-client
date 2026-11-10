@@ -31,9 +31,9 @@ function buildCss() {
     fontFace('SB Newsreader', 'newsreader/files/newsreader-latin-wght-normal.woff2', LATIN, 'normal', '200 800'),
     fontFace('SB Newsreader', 'newsreader/files/newsreader-latin-wght-italic.woff2', LATIN, 'italic', '200 800'),
   ].join('\n');
-  const order = ['tokens.css', 'base.css', 'components.css', 'pages.css', 'appearance.css', 'obsidian.css'];
+  const order = ['tokens.css', 'base.css', 'components.css', 'pages.css', 'appearance.css', 'mobile.css', 'obsidian.css'];
   // tokens + Obsidian-integration rules stay as written; component layers get boosted specificity
-  const scoped = new Set(['base.css', 'components.css', 'pages.css', 'appearance.css']);
+  const scoped = new Set(['base.css', 'components.css', 'pages.css', 'appearance.css', 'mobile.css']);
   const css = order.map((f) => {
     const src = fs.readFileSync(path.join(root, 'src/styles', f), 'utf8');
     return `/* ── ${f} ── */\n` + (scoped.has(f) ? scopeCss(src) : src);

@@ -33,6 +33,28 @@ Open **Appearance** from the gear menu, from *More* in the bottom bar, from the 
 - **Shape**: corner radius from sharp to very round. Density and motion are here too.
 - **Navigation**: by default the sidebar is the navigation; on phones it slides in from the top-left menu button and closes when you tap outside. The **bottom navigation bar** is optional (off by default): show it on phones and small windows, always, or never. Choose up to 6 items (sections, Capture, Search, More) in the order you tap them. Optionally hide Obsidian's own mobile toolbar while the app is open. *More* always gives you every section plus Obsidian's file list and command palette.
 
+## Mobile (iPhone, iPad, Android)
+- **Navigation**: ☰ at top left or **swipe in from the left edge** opens the sidebar. Tap outside it or swipe it to the left to close it. Choosing a page closes it automatically.
+- **Top bar**: the page title appears once you scroll past the large title (iOS style), with 🔍 search, ＋ capture and the context panel. Page actions (edit, favourite, archive…) sit behind **⋯**.
+- **Tasks**: **swipe right → done** (or reopen), **swipe left → move to tomorrow**. **Long-press** a task for all actions (reschedule, priority, rename, open, delete) in a bottom sheet. The checkbox has a large invisible tap area.
+- **Sheets**: menus become bottom action sheets. Capture and search are top sheets that stay above the on-screen keyboard; the Save button is always reachable.
+- **Worklog calendar**: compact month with dots and hours; tap a day to see its entries below, then *Log work* for that day.
+- **Forms**: all inputs use 16 px text, so iOS doesn't zoom in.
+- **Glass on phones**: *Appearance → Liquid glass → Battery-friendly on phones* (default on) keeps scrolling smooth.
+
+### iOS Shortcuts, share sheet, home screen
+The plugin registers `obsidian://second-brain`. Copy ready-made links from *Settings → Second Brain OS → Shortcuts & widgets*:
+
+| Link | Does |
+|---|---|
+| `obsidian://second-brain?vault=<Vault>&add=task&text=<text>` | adds a task silently; quick-add syntax works (`morgen !high @Netzwerk every week`) |
+| `…&add=idea&text=<text>` | captures an idea note in `03-Knowledge/Inbox` |
+| `…&add=journal&text=<text>` | appends to today's journal |
+| `…&capture=task` / `capture=worklog` (optionally `&text=`) | opens the capture form prefilled |
+| `…&route=today` / `route=tasks` / `route=worklogs` | opens a page |
+
+Example Shortcut: *Ask for Input (Text)* → *URL* `obsidian://second-brain?vault=Vault&add=task&text=[Provided Input]` → *Open URLs*. Put it on the home screen, on the Action Button, or say "Hey Siri, Aufgabe hinzufügen". In *Share Sheet* Shortcuts, use the shared text as `text`. Text must be URL-encoded (Shortcuts' *URL Encode* action).
+
 ## Quick add syntax
 `Patchday vorbereiten fri !high @Netzwerk every week`
 

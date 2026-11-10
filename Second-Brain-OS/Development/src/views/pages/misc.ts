@@ -83,7 +83,7 @@ export const JournalPage: PageDef = {
         button({ label: todayEntry ? 'Continue writing' : 'Write today’s entry', icon: 'edit', variant: 'primary', onClick: () => ctx.capture('journal') }),
         todayEntry ? button({ label: 'Open full entry', variant: 'ghost', onClick: () => ctx.edit(todayEntry.path) }) : null)));
     const moods = entries.slice(0, 30).reverse().map((j) => j.mood ?? 0);
-    if (moods.some((m) => m)) root.append(card({ title: 'Mood', subtitle: 'Last 30 entries' }, sparkline(moods, { width: 600, height: 44, ariaLabel: 'Mood trend' })));
+    if (moods.some((m) => m)) root.append(card({ title: 'Mood', subtitle: 'Last 30 entries' }, h('div', { class: 'sb-spark-fluid' }, sparkline(moods, { width: 600, height: 44, ariaLabel: 'Mood trend' }))));
     root.append(sectionTitle('Entries', null, entries.length));
     if (!entries.length) { root.append(emptyState({ icon: 'journal', title: 'Your journal is empty', text: 'Two sentences a day is enough.' })); return; }
     let lastMonth = '';
