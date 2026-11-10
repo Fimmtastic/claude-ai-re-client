@@ -7,7 +7,7 @@ All results below come from the last run in the build environment (Node 22, Chro
 | TypeScript strict typecheck | `npm run typecheck` | ✅ 0 errors (`strict`, `noUncheckedIndexedAccess`, `noImplicitOverride`) |
 | Unit + integration (vitest) | `npm test` | ✅ **36 / 36** |
 | Performance benchmark | `npm run bench` | ✅ within budget (numbers below) |
-| End-to-end, real app in Chromium | `npm run e2e` | ✅ **40 / 40**, 0 runtime errors |
+| End-to-end, real app in Chromium | `npm run e2e` | ✅ **45 / 45**, 0 runtime errors |
 | Plugin entry vs Obsidian API mock | `node tests/e2e/plugin.e2e.mjs` | ✅ **13 / 13**, 0 runtime errors |
 | Real Obsidian | — | ⚠️ **not run**: launching the Obsidian binary wasn't permitted in this environment (see LIMITATIONS) |
 
@@ -61,11 +61,17 @@ Page render times on the demo vault (Chromium, measured in e2e): Home 15 ms, Tod
 38. 720 px width: no horizontal overflow (found and fixed a real grid bug).
 39. `prefers-reduced-motion`: no running animations after navigation.
 40. Page render < 50 ms on the demo vault.
+41–42. The Appearance page renders in dark and light.
+43. **Scroll position**: on a 390 px phone viewport, scroll to the habits widget, tick a habit → scroll position unchanged (±2 px) and the habit is saved.
+44. Appearance on a phone viewport: theme *Midnight*, background *Aurora* and glass apply live (data attributes, `backdrop-filter` active). The bottom bar is visible, navigates and shows the active item; the *More* sheet lists all sections.
+45. Light mode + custom accent `#e0603a` resolves to the exact accent variable; desktop glass screenshots.
 
 ## Plugin entry (`tests/e2e/plugin.e2e.mjs`) — `main.ts` + `obsidian-mock.ts`
 `onload` runs without errors · the view opens on startup · 16 commands registered · immersive body classes set · sidebars collapsed · dashboard renders with data · opening a note removes immersive mode · the editor gets a *Back to Second Brain* action · **the app tab isn't replaced by the editor** (found and fixed) · task write through `vault.process` · backup through `vault.adapter` · settings persisted through `saveData` · scaffold command runs.
 
 ## Bugs found by these tests and fixed
+- **Scroll jumped to the top after in-place updates (e.g. ticking a habit on iOS)**: the page was emptied before re-rendering, so the scroll height briefly collapsed. Now the new page is built off-DOM and swapped in one step, entrance animations are muted during such updates, and the scroll position is re-applied after layout.
+- Tapping the label of a switch row didn't toggle it → the whole row is now the tap target.
 - Primary buttons rendered without a visible label (a CSS reset outweighed the button colour) → resets moved into `:where()`.
 - Narrow layout: the workspace was placed into a 0 px grid column once the sidebar became an overlay → explicit grid placement.
 - Typing immediately after `Ctrl+K` / `C` could lose keystrokes (focus was set on the next frame) → focus set synchronously.

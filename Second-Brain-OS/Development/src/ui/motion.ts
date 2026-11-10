@@ -24,8 +24,24 @@ export function reducedMotion(): boolean {
   return typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
+/**
+ * Quiet mode: during background re-renders (data changed, page stays) entrance
+ * animations are suppressed so the UI updates in place instead of "replaying".
+ */
+let quiet = false;
+export function quietly<T>(fn: () => T): T {
+  const prev = quiet;
+  quiet = true;
+  try {
+    return fn();
+  } finally {
+    quiet = prev;
+  }
+}
+export const isQuiet = () => quiet;
+
 export function animate(el: Element, keyframes: Keyframe[], opts: KeyframeAnimationOptions): Animation | null {
-  if (reducedMotion() || typeof (el as HTMLElement).animate !== 'function') return null;
+  if (quiet || reducedMotion() || typeof (el as HTMLElement).animate !== 'function') return null;
   return (el as HTMLElement).animate(keyframes, { fill: 'none', ...opts });
 }
 
@@ -58,7 +74,7 @@ export function countUp(el: HTMLElement, to: number, opts: { duration?: number; 
   const decimals = opts.decimals ?? 0;
   const suffix = opts.suffix ?? '';
   const fmt = (n: number) => n.toFixed(decimals) + suffix;
-  if (reducedMotion() || to === 0) {
+  if (quiet || reducedMotion() || to === 0) {
     el.textContent = fmt(to);
     return;
   }

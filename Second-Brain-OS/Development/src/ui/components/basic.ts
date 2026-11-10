@@ -1,6 +1,6 @@
 import { h, Props } from '../dom';
 import { icon } from '../icons';
-import { animate, countUp, EASE_OUT } from '../motion';
+import { animate, countUp, EASE_OUT, isQuiet } from '../motion';
 
 /* ─────────────────────────  Buttons  ───────────────────────── */
 
@@ -109,7 +109,8 @@ export function progressRing(ratio: number | null, size = 44, stroke = 3.5) {
   if (ratio !== null) {
     const fill = wrap.querySelector<SVGCircleElement>('.sb-ring__fill')!;
     const target = c * (1 - ratio);
-    requestAnimationFrame(() => (fill.style.strokeDashoffset = String(target)));
+    if (isQuiet()) { fill.style.transition = 'none'; fill.style.strokeDashoffset = String(target); }
+    else requestAnimationFrame(() => (fill.style.strokeDashoffset = String(target)));
     countUp(label, Math.round(ratio * 100), { suffix: '%', duration: 700 });
   }
   return wrap;
@@ -250,4 +251,22 @@ export function toggle(checked: boolean, onChange: (v: boolean) => void, label?:
   input.checked = checked;
   input.addEventListener('change', () => onChange(input.checked));
   return h('label', { class: 'sb-switch' }, input, h('span', { class: 'sb-switch__track' }, h('span', { class: 'sb-switch__thumb' })), label ? h('span', { class: 'sb-switch__label' }, label) : null);
+}
+
+/* ─────────────────────────  Slider  ───────────────────────── */
+
+export function slider(o: { label: string; min: number; max: number; step: number; value: number; format: (v: number) => string; onInput: (v: number) => void; disabled?: boolean }) {
+  const input = h('input', { class: 'sb-range', attrs: { type: 'range', min: o.min, max: o.max, step: o.step, 'aria-label': o.label } });
+  input.value = String(o.value);
+  input.disabled = !!o.disabled;
+  const out = h('span', { class: 'sb-range__value sb-num' }, o.format(o.value));
+  const paint = () => input.style.setProperty('--p', `${((Number(input.value) - o.min) / (o.max - o.min)) * 100}%`);
+  paint();
+  input.addEventListener('input', () => {
+    const v = Number(input.value);
+    out.textContent = o.format(v);
+    paint();
+    o.onInput(v);
+  });
+  return h('label', { class: ['sb-slider', o.disabled && 'is-disabled'] }, h('span', { class: 'sb-slider__head' }, h('span', { class: 'sb-slider__label' }, o.label), out), input);
 }

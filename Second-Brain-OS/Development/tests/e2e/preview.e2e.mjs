@@ -38,7 +38,7 @@ async function open(theme = 'dark', route = 'home', viewport = { width: 1440, he
 }
 const settle = (page, ms = 700) => page.waitForTimeout(ms);
 
-const routes = ['home', 'today', 'tasks', 'worklogs', 'knowledge', 'projects', 'goals', 'learning', 'journal', 'reviews', 'archive'];
+const routes = ['home', 'today', 'tasks', 'worklogs', 'knowledge', 'projects', 'goals', 'learning', 'journal', 'reviews', 'archive', 'appearance'];
 
 // 1. every page renders in both themes without errors
 for (const theme of ['dark', 'light']) {
@@ -293,6 +293,66 @@ await check('perf: page render < 50ms (demo vault)', async () => {
   console.log('render ms', JSON.stringify(times));
   const worst = Math.max(...Object.values(times));
   assert(worst < 50, `worst ${worst}ms`);
+  await p.close();
+});
+
+// 19. scroll position survives in-place updates (habit toggle on dashboard)
+await check('scroll: habit toggle keeps scroll position', async () => {
+  const p = await open('dark', 'home', { width: 390, height: 844 });
+  await settle(p);
+  await p.evaluate(() => document.querySelector('.sb-widget[data-widget="habits"]').scrollIntoView({ block: 'center' }));
+  await settle(p, 200);
+  const before = await p.evaluate(() => document.querySelector('.sb-main').scrollTop);
+  assert(before > 300, `not scrolled (${before})`);
+  await p.click('.sb-widget[data-widget="habits"] .sb-habit__check >> nth=0');
+  await settle(p, 900);
+  const after = await p.evaluate(() => document.querySelector('.sb-main').scrollTop);
+  assert(Math.abs(after - before) <= 2, `scroll ${before} → ${after}`);
+  const done = await p.evaluate(() => window.__sbos.store.snapshot().daily.find((d) => d.date === '2026-11-10').habits);
+  assert(done.includes('Lesen'), JSON.stringify(done));
+  await p.close();
+});
+
+// 20. appearance: theme, glass, background applied live + bottom nav on phone width
+await check('appearance: theme/glass/background live + bottom nav on phone', async () => {
+  const p = await open('dark', 'appearance', { width: 390, height: 844 });
+  await settle(p);
+  const visible = await p.$eval('.sb-bottomnav', (e) => getComputedStyle(e).display !== 'none');
+  assert(visible, 'bottom nav hidden on phone width');
+  await p.click('.sb-theme-swatch >> text=Midnight');
+  await settle(p, 300);
+  await p.click('.sb-bg-swatch >> text=Aurora');
+  await settle(p, 300);
+  await p.click('text=Enable glass surfaces');
+  await settle(p, 300);
+  const st = await p.evaluate(() => { const r = document.querySelector('.sb-app'); return { theme: r.dataset.theme, glass: r.classList.contains('is-glass'), bg: r.classList.contains('has-bg'), bf: getComputedStyle(document.querySelector('.sb-card')).backdropFilter }; });
+  assert(st.theme === 'midnight' && st.glass && st.bg && st.bf.includes('blur'), JSON.stringify(st));
+  await p.screenshot({ path: path.join(shots, 'phone-appearance.png') });
+  await p.evaluate(() => window.__sbos.shell.navigate('home'));
+  await settle(p, 800);
+  await p.screenshot({ path: path.join(shots, 'phone-home-glass.png') });
+  await p.click('.sb-bottomnav__item[data-nav="tasks"]');
+  await settle(p, 500);
+  assert(await p.$('.sb-bottomnav__item[data-nav="tasks"].is-active'), 'tasks not active');
+  await p.click('.sb-bottomnav__item[aria-label="More"]');
+  await settle(p, 400);
+  assert((await p.$$('.sb-sheet__item')).length >= 12, 'more sheet incomplete');
+  await p.screenshot({ path: path.join(shots, 'phone-more-sheet.png') });
+  await p.keyboard.press('Escape');
+  await p.close();
+});
+
+await check('appearance: light mode + custom accent + desktop glass', async () => {
+  const p = await open('dark', 'home');
+  await p.evaluate(() => { const s = window.__sbos.settings; s.appearance.mode = 'light'; s.appearance.theme = 'sand'; s.accent = 'custom'; s.appearance.accentCustom = '#e0603a'; s.appearance.background = { kind: 'preset', preset: 'pastel', image: '', blur: 0, dim: 0.1 }; s.appearance.glass.enabled = true; window.__sbos.shell.applyAppearance(); });
+  await settle(p, 500);
+  const acc = await p.evaluate(() => getComputedStyle(document.querySelector('.sb-app')).getPropertyValue('--sb-accent').trim());
+  assert(acc.toLowerCase() === '#e0603a', `accent ${acc}`);
+  assert(await p.evaluate(() => document.querySelector('.sb-app').dataset.mode === 'light'), 'mode');
+  await p.screenshot({ path: path.join(shots, 'desktop-light-glass.png') });
+  await p.evaluate(() => { const s = window.__sbos.settings; s.appearance.mode = 'dark'; s.appearance.theme = 'graphite'; s.accent = 'indigo'; s.appearance.background = { kind: 'preset', preset: 'nebula', image: '', blur: 0, dim: 0.25 }; window.__sbos.shell.applyAppearance(); });
+  await settle(p, 500);
+  await p.screenshot({ path: path.join(shots, 'desktop-dark-glass.png') });
   await p.close();
 });
 

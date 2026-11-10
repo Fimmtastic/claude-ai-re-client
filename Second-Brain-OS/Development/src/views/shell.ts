@@ -1,14 +1,16 @@
 import { h, clear, preserveScroll, isTypingTarget, modKey } from '../ui/dom';
 import { icon } from '../ui/icons';
-import { pageTransition, flip, setMotionPreference, enter } from '../ui/motion';
-import { toast, setOverlayLayer, installTooltips, menu } from '../ui/components/overlay';
+import { pageTransition, flip, setMotionPreference, enter, quietly } from '../ui/motion';
+import { toast, setOverlayLayer, installTooltips, menu, modal } from '../ui/components/overlay';
 import { openPalette, PaletteCommand } from '../ui/components/palette';
 import { openCapture } from '../ui/components/capture';
 import { button, iconButton } from '../ui/components/basic';
 import type { AppContext, CaptureMode, CapturePreset, PageDef } from './context';
 import { NAV, routeForKind } from './meta';
+import { applyAppearance } from './appearance-apply';
 import { PAGES } from './pages';
 import type { DataStore, Snapshot } from '../core/store';
+import { BG_PRESETS } from './appearance-apply';
 import type { Actions } from '../core/actions';
 import { ConflictError } from '../core/actions';
 import type { VaultPort } from '../core/ports';
@@ -27,6 +29,8 @@ export interface ShellDeps {
   /** extra commands contributed by host (e.g. Obsidian-only) */
   hostCommands?: PaletteCommand[];
   onOpenSettings?: () => void;
+  /** host chrome (e.g. Obsidian mobile toolbar) needs re-evaluation */
+  onHostChrome?: () => void;
 }
 
 /**
@@ -59,6 +63,9 @@ export class AppShell implements AppContext {
   private chord: { key: string; at: number } | null = null;
   private lastVersion = -1;
   private renderQueued = false;
+  private overlay!: HTMLElement;
+  private bgEl!: HTMLElement;
+  private bottomNav!: HTMLElement;
 
   constructor(deps: ShellDeps) {
     this.deps = deps;
@@ -143,6 +150,9 @@ export class AppShell implements AppContext {
   palette(initial = '') {
     openPalette(this, this.commands(), initial);
   }
+  onHostChrome() {
+    this.deps.onHostChrome?.();
+  }
   refresh() {
     this.scheduleRender(true);
   }
@@ -163,8 +173,12 @@ export class AppShell implements AppContext {
       attrs: { tabindex: '-1' },
     });
     const overlay = h('div', { class: 'sb-overlay-layer sbos-root', dataset: { accent: this.settings.accent } });
+    this.overlay = overlay;
     setOverlayLayer(overlay);
-    this.root.append(this.buildSidebar(), this.buildMain(), this.buildContext());
+    this.bgEl = h('div', { class: 'sb-bg', attrs: { 'aria-hidden': 'true' } }, h('div', { class: 'sb-bg__image' }), h('div', { class: 'sb-bg__dim' }));
+    this.bottomNav = h('nav', { class: 'sb-bottomnav', attrs: { 'aria-label': 'Quick navigation' } });
+    this.root.append(this.bgEl, this.buildSidebar(), this.buildMain(), this.buildContext(), this.bottomNav);
+    this.applyAppearance();
     container.append(this.root);
     document.body.append(overlay);
     this.unsub.push(() => overlay.remove());
@@ -188,7 +202,78 @@ export class AppShell implements AppContext {
     this.root.classList.remove('sb-density-comfortable', 'sb-density-compact');
     this.root.classList.add(`sb-density-${s.density}`);
     setMotionPreference(s.reduceMotion);
+    this.applyAppearance();
     this.scheduleRender(true);
+  }
+
+  /** Applies theme, mode, accent, glass, radius and background without re-rendering pages. */
+  applyAppearance() {
+    if (!this.root) return;
+    for (const el of [this.root, this.overlay]) applyAppearance(el, this.settings, this.port);
+    const a = this.settings.appearance;
+    const img = this.bgEl.querySelector<HTMLElement>('.sb-bg__image')!;
+    const dim = this.bgEl.querySelector<HTMLElement>('.sb-bg__dim')!;
+    let bg = '';
+    if (a.background.kind === 'preset') bg = BG_PRESETS[a.background.preset]?.css ?? '';
+    else if (a.background.kind === 'image' && a.background.image) {
+      const url = this.port.resourceUrl(a.background.image);
+      if (url) bg = `center / cover no-repeat url("${url.replace(/"/g, '%22')}")`;
+    }
+    this.root.classList.toggle('has-bg', !!bg);
+    img.style.background = bg;
+    img.style.filter = a.background.blur ? `blur(${a.background.blur}px)` : '';
+    img.style.transform = a.background.blur ? 'scale(1.08)' : '';
+    dim.style.opacity = String(bg ? a.background.dim : 0);
+    this.renderBottomNav();
+  }
+
+  private renderBottomNav() {
+    const bn = this.settings.bottomNav;
+    this.root.classList.remove('bn-auto', 'bn-always', 'bn-off');
+    this.root.classList.add(`bn-${bn.mode}`);
+    clear(this.bottomNav);
+    const current = this.page?.nav;
+    for (const id of bn.items) {
+      let el: HTMLElement;
+      if (id === 'capture') {
+        el = h('button', { class: 'sb-bottomnav__capture', attrs: { type: 'button', 'aria-label': 'Capture' } }, icon('plus', 22));
+        el.addEventListener('click', () => this.capture());
+      } else if (id === 'search') {
+        el = h('button', { class: 'sb-bottomnav__item', attrs: { type: 'button', 'aria-label': 'Search' } }, icon('search', 21), h('span', null, 'Search'));
+        el.addEventListener('click', () => this.palette());
+      } else if (id === 'more') {
+        el = h('button', { class: 'sb-bottomnav__item', attrs: { type: 'button', 'aria-label': 'More' } }, icon('more', 21), h('span', null, 'More'));
+        el.addEventListener('click', () => this.openMoreSheet());
+      } else {
+        const item = NAV.find((n) => n.id === id);
+        if (!item) continue;
+        el = h('button', { class: ['sb-bottomnav__item', current === item.id && 'is-active'], attrs: { type: 'button', 'aria-label': item.label, 'aria-current': current === item.id ? 'page' : undefined }, dataset: { nav: item.id } }, icon(item.icon, 21), h('span', null, item.label));
+        el.addEventListener('click', () => this.navigate(item.route));
+      }
+      this.bottomNav.append(el);
+    }
+  }
+
+  /** Bottom sheet with every section, appearance and host (Obsidian) actions. */
+  openMoreSheet() {
+    const m = modal({ class: 'sb-sheet', width: 560 });
+    const grid = h('div', { class: 'sb-sheet__grid' });
+    for (const n of NAV) {
+      const b = h('button', { class: ['sb-sheet__item', this.page?.nav === n.id && 'is-active'], attrs: { type: 'button' } }, h('span', { class: 'sb-sheet__icon' }, icon(n.icon, 20)), h('span', null, n.label));
+      b.addEventListener('click', () => { m.close(); this.navigate(n.route); });
+      grid.append(b);
+    }
+    const appearance = h('button', { class: 'sb-sheet__item', attrs: { type: 'button' } }, h('span', { class: 'sb-sheet__icon' }, icon('sparkle', 20)), h('span', null, 'Appearance'));
+    appearance.addEventListener('click', () => { m.close(); this.navigate('appearance'); });
+    grid.append(appearance);
+    const list = h('div', { class: 'sb-sheet__list' });
+    for (const c of this.deps.hostCommands ?? []) {
+      const b = h('button', { class: 'sb-row', attrs: { type: 'button' } }, h('span', { class: 'sb-row__icon' }, icon(c.icon, 15)), h('span', { class: 'sb-row__main' }, h('span', { class: 'sb-row__title' }, c.label)));
+      b.addEventListener('click', () => { m.close(); c.run(); });
+      list.append(b);
+    }
+    m.body.append(h('div', { class: 'sb-sheet__handle' }), grid);
+    if (list.childElementCount) m.body.append(h('div', { class: 'sb-subhead' }, 'Obsidian'), list);
   }
 
   private buildSidebar() {
@@ -259,6 +344,7 @@ export class AppShell implements AppContext {
     const accents: Settings['accent'][] = ['indigo', 'blue', 'teal', 'amber', 'rose', 'graphite'];
     menu([
       { label: 'Plugin settings…', icon: 'settings', run: () => this.deps.onOpenSettings?.(), disabled: !this.deps.onOpenSettings },
+      { label: 'Appearance…', icon: 'sparkle', run: () => this.navigate('appearance') },
       { label: 'Customize dashboard', icon: 'kanban', run: () => { this.navigate('home'); this.state('home', { editing: false }).editing = true; this.refresh(); } },
       { label: this.settings.density === 'compact' ? 'Comfortable density' : 'Compact density', icon: 'list', run: () => { this.settings.density = this.settings.density === 'compact' ? 'comfortable' : 'compact'; this.saveSettings(); this.applySettings(this.settings); } },
       { label: this.settings.privacyMode ? 'Disable privacy mode' : 'Enable privacy mode', icon: this.settings.privacyMode ? 'eye' : 'eye-off', run: () => { this.settings.privacyMode = !this.settings.privacyMode; this.saveSettings(); this.refresh(); } },
@@ -348,11 +434,40 @@ export class AppShell implements AppContext {
       pageTransition(this.pageEl, dir);
       this.pageEl.querySelectorAll(':scope > *').forEach((el, i) => i < 8 && enter(el, i * 26, 4));
     } else {
+      // Double-buffered update: build the new page off-DOM, then swap in one step.
+      // The scroll container never collapses to 0 height, so iOS/WebKit keeps the
+      // scroll position; entrance animations are muted (quietly) for in-place updates.
+      const top = this.main.scrollTop;
+      const swap = () => {
+        const next = h('div', { class: `sb-page sb-page--${page.id} is-quiet` });
+        const old = this.pageEl;
+        try {
+          quietly(() => page.render(this, next, this.param));
+        } catch (e) {
+          log.error(`render ${page.id} failed`, e);
+          return;
+        }
+        old.replaceWith(next);
+        this.pageEl = next;
+        requestAnimationFrame(() => next.classList.remove('is-quiet'));
+      };
       const flippable = this.pageEl.querySelectorAll('[data-flip]').length;
-      preserveScroll(this.root, () => (flippable && flippable < 250 ? flip(this.pageEl, draw) : draw()));
+      preserveScroll(this.root, () => (flippable && flippable < 250 ? flip(this.main, swap) : swap()));
+      if (this.main.scrollTop !== top) this.main.scrollTop = top;
+      requestAnimationFrame(() => { if (Math.abs(this.main.scrollTop - top) > 1) this.main.scrollTop = top; });
     }
+    this.renderBottomNavActive();
     if (this.settings.ui.contextOpen) this.renderContext();
     log.debug(`render ${page.id} ${(performance.now() - t0).toFixed(1)}ms`);
+  }
+
+  private renderBottomNavActive() {
+    this.bottomNav?.querySelectorAll<HTMLElement>('[data-nav]').forEach((b) => {
+      const on = b.dataset.nav === this.page?.nav;
+      b.classList.toggle('is-active', on);
+      if (on) b.setAttribute('aria-current', 'page');
+      else b.removeAttribute('aria-current');
+    });
   }
 
   private renderCrumbs() {
@@ -472,6 +587,7 @@ export class AppShell implements AppContext {
       { id: 'toggle-sidebar', label: 'Toggle sidebar', icon: 'panel-left', section: 'App', hint: '[', run: () => this.toggleSidebar() },
       { id: 'toggle-context', label: 'Toggle context panel', icon: 'panel-right', section: 'App', hint: ']', run: () => this.toggleContextPanel() },
       { id: 'shortcuts', label: 'Keyboard shortcuts', icon: 'command', section: 'App', hint: '?', run: () => this.showShortcuts() },
+      { id: 'appearance', label: 'Appearance: themes, background, glass', icon: 'sparkle', section: 'App', keywords: 'theme design hintergrund glass liquid farbe', run: () => this.navigate('appearance') },
       { id: 'customize', label: 'Customize dashboard', icon: 'kanban', section: 'App', run: () => { this.navigate('home'); this.state('home', { editing: false }).editing = true; this.refresh(); } },
       { id: 'export-week', label: 'Export Ausbildungsnachweis (this week)', icon: 'download', section: 'Worklogs', keywords: 'training record berichtsheft', run: () => this.navigate('worklogs/export') },
     ];

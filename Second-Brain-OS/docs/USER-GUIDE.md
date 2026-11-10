@@ -23,6 +23,16 @@
 | **Reviews** | Guided daily, weekly, monthly and quarterly reviews built from your real data. |
 | **Archive** | Finished projects, achieved or dropped goals, archived notes. Nothing is deleted. |
 
+## Appearance (themes, backgrounds, liquid glass, bottom bar)
+Open **Appearance** from the gear menu, from *More* in the bottom bar, from the command palette ("Appearance"), or with the button in the plugin settings. Everything applies live and is saved automatically:
+- **Mode**: follow Obsidian, or always light / always dark.
+- **Theme**: Graphite, Midnight, Forest, Sand, Plum, Mono, each with a light and a dark variant.
+- **Accent**: six presets or any custom colour.
+- **Background**: none, 8 gradient presets, or your own image. *Upload* stores the image in `00-System/Backgrounds/` inside your vault, and any image already in the vault can be picked too. Sliders for blur and dim.
+- **Liquid glass**: translucent, blurred surfaces with a light edge. Adjustable frost (blur), opacity, colour saturation and light-edge strength. It looks best over a colourful background.
+- **Shape**: corner radius from sharp to very round. Density and motion are here too.
+- **Bottom navigation bar**: show on phones and small windows, always, or never. Choose up to 6 items (sections, Capture, Search, More) in the order you tap them. Optionally hide Obsidian's own mobile toolbar while the app is open. *More* always gives you every section plus Obsidian's file list and command palette.
+
 ## Quick add syntax
 `Patchday vorbereiten fri !high @Netzwerk every week`
 

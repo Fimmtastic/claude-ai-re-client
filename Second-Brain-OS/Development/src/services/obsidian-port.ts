@@ -139,6 +139,18 @@ export class ObsidianPort implements VaultPort {
   resolveLink(link: string, from: string) {
     return this.app.metadataCache.getFirstLinkpathDest(link.split('|')[0]!.split('#')[0]!, from)?.path ?? null;
   }
+  listImages() {
+    return this.app.vault.getFiles().filter((f) => /^(png|jpe?g|webp|gif|avif|bmp)$/i.test(f.extension)).map((f) => f.path);
+  }
+  resourceUrl(path: string) {
+    const f = this.app.vault.getAbstractFileByPath(normalizePath(path));
+    return f instanceof TFile ? this.app.vault.getResourcePath(f) : null;
+  }
+  async writeBinary(path: string, data: ArrayBuffer) {
+    const p = normalizePath(path);
+    if (this.exists(p)) throw new Error(`File already exists: ${p}`);
+    await this.app.vault.createBinary(p, data);
+  }
   backlinks(path: string) {
     const out: string[] = [];
     const resolved = this.app.metadataCache.resolvedLinks;

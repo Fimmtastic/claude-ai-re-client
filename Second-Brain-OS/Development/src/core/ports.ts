@@ -51,6 +51,12 @@ export interface VaultPort {
   subscribe(listener: (ev: VaultEvent) => void): () => void;
   /** Resolves a link text to a vault path, or null */
   resolveLink(link: string, fromPath: string): string | null;
+  /** Image files in the vault (vault-relative paths) — for custom backgrounds */
+  listImages(): string[];
+  /** URL the webview can load for a vault file, or null */
+  resourceUrl(path: string): string | null;
+  /** Create a binary file (fails if it exists) */
+  writeBinary(path: string, data: ArrayBuffer): Promise<void>;
   /** Backlinks: paths linking to `path` */
   backlinks(path: string): string[];
 }

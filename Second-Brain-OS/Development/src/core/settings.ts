@@ -28,6 +28,51 @@ export interface DashboardWidget {
   visible: boolean;
 }
 
+export type ThemeId = 'graphite' | 'midnight' | 'forest' | 'sand' | 'plum' | 'mono';
+export type AccentId = 'indigo' | 'blue' | 'teal' | 'amber' | 'rose' | 'graphite' | 'custom';
+export type BottomNavItem = 'home' | 'today' | 'worklogs' | 'knowledge' | 'projects' | 'tasks' | 'goals' | 'learning' | 'journal' | 'reviews' | 'archive' | 'capture' | 'search' | 'more';
+
+export interface Appearance {
+  /** follow Obsidian's light/dark, or force one */
+  mode: 'obsidian' | 'light' | 'dark';
+  theme: ThemeId;
+  accentCustom: string;
+  background: {
+    kind: 'none' | 'preset' | 'image';
+    preset: string;
+    /** vault-relative path of an image */
+    image: string;
+    blur: number; // px
+    dim: number; // 0..0.9
+  };
+  glass: {
+    enabled: boolean;
+    blur: number; // px
+    opacity: number; // 0.15..0.95 surface opacity
+    saturation: number; // 1..2.2
+    highlight: number; // 0..1 specular edge strength
+  };
+  radius: number; // 0.5..1.6 scale
+}
+
+export interface BottomNavSettings {
+  mode: 'auto' | 'always' | 'off';
+  items: BottomNavItem[];
+  /** hide Obsidian's own mobile toolbar while the app is active */
+  hideObsidianBar: boolean;
+}
+
+export const DEFAULT_APPEARANCE: Appearance = {
+  mode: 'obsidian',
+  theme: 'graphite',
+  accentCustom: '#7c7ff2',
+  background: { kind: 'none', preset: 'aurora', image: '', blur: 0, dim: 0.35 },
+  glass: { enabled: false, blur: 22, opacity: 0.55, saturation: 1.6, highlight: 0.55 },
+  radius: 1,
+};
+
+export const DEFAULT_BOTTOM_NAV: BottomNavSettings = { mode: 'auto', items: ['home', 'today', 'capture', 'tasks', 'more'], hideObsidianBar: true };
+
 export interface Settings {
   schemaVersion: number;
   userName: string;
@@ -36,7 +81,9 @@ export interface Settings {
   /** Hide Obsidian chrome while the app view is active */
   immersive: boolean;
   openOnStartup: boolean;
-  accent: 'indigo' | 'blue' | 'teal' | 'amber' | 'rose' | 'graphite';
+  accent: AccentId;
+  appearance: Appearance;
+  bottomNav: BottomNavSettings;
   density: 'comfortable' | 'compact';
   reduceMotion: 'system' | 'on' | 'off';
   folders: FolderConfig;
@@ -68,6 +115,8 @@ export const DEFAULT_SETTINGS: Settings = {
   immersive: true,
   openOnStartup: true,
   accent: 'indigo',
+  appearance: structuredClone(DEFAULT_APPEARANCE),
+  bottomNav: structuredClone(DEFAULT_BOTTOM_NAV),
   density: 'comfortable',
   reduceMotion: 'system',
   folders: { ...DEFAULT_FOLDERS },
@@ -90,6 +139,13 @@ export function mergeSettings(stored: unknown): Settings {
     ...s,
     folders: { ...DEFAULT_SETTINGS.folders, ...(s.folders ?? {}) },
     ui: { ...DEFAULT_SETTINGS.ui, ...(s.ui ?? {}) },
+    appearance: {
+      ...DEFAULT_APPEARANCE,
+      ...(s.appearance ?? {}),
+      background: { ...DEFAULT_APPEARANCE.background, ...(s.appearance?.background ?? {}) },
+      glass: { ...DEFAULT_APPEARANCE.glass, ...(s.appearance?.glass ?? {}) },
+    },
+    bottomNav: { ...DEFAULT_BOTTOM_NAV, ...(s.bottomNav ?? {}), items: Array.isArray(s.bottomNav?.items) && s.bottomNav!.items.length ? s.bottomNav!.items.slice(0, 6) : [...DEFAULT_BOTTOM_NAV.items] },
     habits: Array.isArray(s.habits) ? s.habits.filter((h) => typeof h === 'string') : DEFAULT_SETTINGS.habits,
     dashboard: DEFAULT_SETTINGS.dashboard,
   };

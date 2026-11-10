@@ -7,6 +7,7 @@ import { KnowledgePage, NotePage } from './knowledge';
 import { GoalPage, GoalsPage } from './goals';
 import { ArchivePage, JournalPage, LearningPage } from './misc';
 import { ReviewSessionPage, ReviewsPage } from './reviews';
+import { AppearancePage } from './appearance';
 
 /** Page registry. Adding a module = adding a PageDef here + a NAV entry. */
 export const PAGES: Record<string, PageDef> = {
@@ -25,4 +26,5 @@ export const PAGES: Record<string, PageDef> = {
   reviews: ReviewsPage,
   review: ReviewSessionPage,
   archive: ArchivePage,
+  appearance: AppearancePage,
 };

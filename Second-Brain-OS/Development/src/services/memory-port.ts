@@ -115,6 +115,18 @@ export class MemoryPort implements VaultPort {
     }
     return null;
   }
+  images = new Map<string, string>();
+  listImages() {
+    return [...this.images.keys()];
+  }
+  resourceUrl(path: string) {
+    return this.images.get(path) ?? null;
+  }
+  async writeBinary(path: string, data: ArrayBuffer) {
+    if (this.images.has(path)) throw new Error(`File already exists: ${path}`);
+    const url = typeof URL !== 'undefined' && typeof Blob !== 'undefined' && URL.createObjectURL ? URL.createObjectURL(new Blob([data])) : `mem://${path}`;
+    this.images.set(path, url);
+  }
   backlinks(path: string) {
     const base = path.split('/').pop()!.replace(/\.md$/, '').toLowerCase();
     return this.listFiles().filter((f) => f.path !== path && f.links.includes(base)).map((f) => f.path);

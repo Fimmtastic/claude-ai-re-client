@@ -40,12 +40,14 @@ export default class SecondBrainPlugin extends Plugin {
       void this.actions.pruneBackups().catch((e) => log.warn('backup prune failed', e));
       if (this.settings.openOnStartup) await this.activate();
       this.registerEvent(this.app.workspace.on('active-leaf-change', (leaf) => this.onLeafChange(leaf)));
+      // follow Obsidian's light/dark switch when appearance mode is 'obsidian'
+      this.registerEvent(this.app.workspace.on('css-change', () => { for (const s of this.shells) s.applyAppearance(); }));
       this.onLeafChange(this.app.workspace.getMostRecentLeaf());
     });
   }
 
   override onunload() {
-    document.body.classList.remove('sbos-immersive', 'sbos-app-active');
+    document.body.classList.remove('sbos-immersive', 'sbos-app-active', 'sbos-hide-obsidian-nav');
     this.store?.destroy();
   }
 
@@ -81,10 +83,15 @@ export default class SecondBrainPlugin extends Plugin {
   }
 
   /** Immersive mode: hide Obsidian chrome only while our view is the active leaf. */
+  refreshHostChrome() {
+    this.onLeafChange(this.app.workspace.getMostRecentLeaf());
+  }
+
   private onLeafChange(leaf: WorkspaceLeaf | null) {
     const active = leaf?.view.getViewType() === VIEW_TYPE;
     document.body.classList.toggle('sbos-app-active', active);
     document.body.classList.toggle('sbos-immersive', active && this.settings.immersive);
+    document.body.classList.toggle('sbos-hide-obsidian-nav', active && this.settings.bottomNav.mode !== 'off' && this.settings.bottomNav.hideObsidianBar);
     // Offer a way back from any markdown editor
     if (leaf?.view instanceof MarkdownView) {
       const v = leaf.view as MarkdownView & { __sbosAction?: HTMLElement };
@@ -131,10 +138,18 @@ export default class SecondBrainPlugin extends Plugin {
     return [
       { id: 'host-immersive', label: `${this.settings.immersive ? 'Disable' : 'Enable'} immersive mode`, icon: 'focus', section: 'App', run: () => { this.settings.immersive = !this.settings.immersive; this.saveSettings(); this.applySettingsToShells(); } },
       { id: 'host-files', label: 'Show Obsidian file explorer', icon: 'folder', section: 'App', run: () => { this.app.workspace.leftSplit?.expand(); } },
+      { id: 'host-palette', label: 'Obsidian command palette', icon: 'command', section: 'App', run: () => this.runObsidianCommand('command-palette:open') },
+      { id: 'host-new-note', label: 'New Obsidian note (plain)', icon: 'file', section: 'App', run: () => this.runObsidianCommand('file-explorer:new-file') },
       { id: 'host-backup', label: 'Create full backup', icon: 'download', section: 'App', run: () => void this.fullBackup() },
       { id: 'host-scaffold', label: 'Create missing vault folders', icon: 'folder', section: 'App', run: () => void this.scaffold() },
       { id: 'host-testdata', label: 'Remove demo / test data', icon: 'trash', section: 'App', run: () => void this.removeTestData() },
     ];
+  }
+
+  /** Runs a built-in Obsidian command if available (app.commands is not part of the typed API, so this is guarded). */
+  private runObsidianCommand(id: string) {
+    const cmds = (this.app as App & { commands?: { executeCommandById?(id: string): boolean } }).commands;
+    if (!cmds?.executeCommandById?.(id)) new Notice('This Obsidian command is not available here.');
   }
 
   /** Creates only missing folders + inbox. Never touches existing files. */
@@ -190,6 +205,7 @@ class SecondBrainView extends ItemView {
       settings: p.settings,
       saveSettings: () => p.saveSettings(),
       hostCommands: p.hostCommands(),
+      onHostChrome: () => p.refreshHostChrome(),
       onOpenSettings: () => {
         const setting = (this.app as App & { setting?: { open(): void; openTabById(id: string): void } }).setting;
         setting?.open();
@@ -206,7 +222,7 @@ class SecondBrainView extends ItemView {
       this.shell.destroy();
       this.shell = null;
     }
-    document.body.classList.remove('sbos-immersive', 'sbos-app-active');
+    document.body.classList.remove('sbos-immersive', 'sbos-app-active', 'sbos-hide-obsidian-nav');
   }
 }
 
@@ -223,10 +239,11 @@ class SecondBrainSettingTab extends PluginSettingTab {
     new Setting(containerEl).setName('Motto').setDesc('Shown on the dashboard unless today’s daily note has its own motto.').addText((t) => t.setValue(s.motto).onChange((v) => { s.motto = v; save(); }));
     new Setting(containerEl).setName('Locale').setDesc('Date formatting, e.g. de-DE or en-GB.').addText((t) => t.setValue(s.locale).onChange((v) => { try { new Intl.DateTimeFormat(v); s.locale = v; save(); } catch { /* ignore invalid */ } }));
 
+    new Setting(containerEl).setName('Appearance studio').setDesc('Themes, accent colour, backgrounds, liquid glass, corner radius and the bottom navigation bar — with live preview.').addButton((b) => b.setButtonText('Open').setCta().onClick(() => void this.plugin.activate('appearance')));
     containerEl.createEl('h3', { text: 'Experience' });
     new Setting(containerEl).setName('Open on startup').addToggle((t) => t.setValue(s.openOnStartup).onChange((v) => { s.openOnStartup = v; save(); }));
     new Setting(containerEl).setName('Immersive mode').setDesc('Hide ribbon, tab bar and status bar while Second Brain is the active tab. Markdown editing is unaffected.').addToggle((t) => t.setValue(s.immersive).onChange((v) => { s.immersive = v; save(); }));
-    new Setting(containerEl).setName('Accent').addDropdown((d) => d.addOptions({ indigo: 'Indigo', blue: 'Blue', teal: 'Teal', amber: 'Amber', rose: 'Rose', graphite: 'Graphite' }).setValue(s.accent).onChange((v) => { s.accent = v as Settings['accent']; save(); }));
+    new Setting(containerEl).setName('Accent').addDropdown((d) => d.addOptions({ indigo: 'Indigo', blue: 'Blue', teal: 'Teal', amber: 'Amber', rose: 'Rose', graphite: 'Graphite', custom: 'Custom (Appearance studio)' }).setValue(s.accent).onChange((v) => { s.accent = v as Settings['accent']; save(); }));
     new Setting(containerEl).setName('Density').addDropdown((d) => d.addOptions({ comfortable: 'Comfortable', compact: 'Compact' }).setValue(s.density).onChange((v) => { s.density = v as Settings['density']; save(); }));
     new Setting(containerEl).setName('Reduce motion').setDesc('System follows your OS preference.').addDropdown((d) => d.addOptions({ system: 'System', on: 'Always reduce', off: 'Full motion' }).setValue(s.reduceMotion).onChange((v) => { s.reduceMotion = v as Settings['reduceMotion']; save(); }));
     new Setting(containerEl).setName('Privacy mode').setDesc('Blur journal excerpts and exclude the journal from global search.').addToggle((t) => t.setValue(s.privacyMode).onChange((v) => { s.privacyMode = v; save(); }));

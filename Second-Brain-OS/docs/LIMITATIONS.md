@@ -25,6 +25,12 @@
 - In Obsidian, demo files get their realistic modification times only when generated with `scripts/seed-demo.mjs` (which sets file mtimes). A `git checkout` resets mtimes, which affects "recently edited" ordering and the activity timeline, not any stored data. Re-run the seed script (`--today` optional) after cloning for realistic demo history.
 - Undo/redo holds the last 50 app changes in memory and is cleared on restart. It never overwrites a file that changed elsewhere.
 
+## Appearance
+- Liquid glass uses `backdrop-filter`. It costs GPU time and battery, especially on phones and with large blur values. Lower *Frost* or turn glass off if scrolling stutters. Glass is off by default.
+- Hiding Obsidian's mobile toolbar uses its `.mobile-navbar` class (CSS only, active only while the app tab is focused). If a future Obsidian version renames it, the toolbar simply stays visible.
+- "Obsidian command palette" / "New Obsidian note" in *More* call `app.commands.executeCommandById`, which isn't part of Obsidian's typed public API. The call is guarded: if it isn't available, you get a notice instead of an error.
+- Custom backgrounds are loaded via `vault.getResourcePath`. Very large images (> 15 MB) are refused at upload.
+
 ## Mobile / tablet
 The plugin isn't desktop-only and the layout uses container queries (sidebar and context panel become overlays below 760 px; the top-bar menu button opens navigation). Not tested on real devices:
 - Drag-and-drop (project board, dashboard reorder) relies on HTML5 DnD, which doesn't work with touch on iOS/Android. Use the status menu / move buttons instead (dashboard edit mode has ↑/↓ buttons; projects have a status menu).
