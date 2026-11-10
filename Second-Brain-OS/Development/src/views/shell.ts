@@ -177,7 +177,10 @@ export class AppShell implements AppContext {
     setOverlayLayer(overlay);
     this.bgEl = h('div', { class: 'sb-bg', attrs: { 'aria-hidden': 'true' } }, h('div', { class: 'sb-bg__image' }), h('div', { class: 'sb-bg__dim' }));
     this.bottomNav = h('nav', { class: 'sb-bottomnav', attrs: { 'aria-label': 'Quick navigation' } });
-    this.root.append(this.bgEl, this.buildSidebar(), this.buildMain(), this.buildContext(), this.bottomNav);
+    // tap-outside scrim for the overlay sidebar on narrow screens
+    const scrim = h('div', { class: 'sb-scrim', attrs: { 'aria-hidden': 'true' } });
+    scrim.addEventListener('click', () => { this.root.classList.remove('is-collapsed'); this.settings.ui.sidebarCollapsed = false; this.saveSettings(); });
+    this.root.append(this.bgEl, this.buildSidebar(), this.buildMain(), this.buildContext(), this.bottomNav, scrim);
     this.applyAppearance();
     container.append(this.root);
     document.body.append(overlay);
@@ -299,7 +302,9 @@ export class AppShell implements AppContext {
       nav,
       h('div', { class: 'sb-sidebar__spacer' }),
       h('div', { class: 'sb-sidebar__projects', dataset: { slot: 'pinned' } }),
-      h('div', { class: 'sb-sidebar__footer' }, settingsBtn, collapse));
+      h('div', { class: 'sb-sidebar__footer' }, settingsBtn,
+        (this.deps.hostCommands?.length ? iconButton('command', 'Obsidian', (ev) => menu((this.deps.hostCommands ?? []).map((c) => ({ label: c.label, icon: c.icon, run: c.run })), ev.currentTarget as HTMLElement, { align: 'start', minWidth: 240 }), { class: 'sb-obsidian-btn' }) : null),
+        collapse));
     return this.sidebar;
   }
 

@@ -63,7 +63,7 @@ Page render times on the demo vault (Chromium, measured in e2e): Home 15 ms, Tod
 40. Page render < 50 ms on the demo vault.
 41–42. The Appearance page renders in dark and light.
 43. **Scroll position**: on a 390 px phone viewport, scroll to the habits widget, tick a habit → scroll position unchanged (±2 px) and the habit is saved.
-44. Appearance on a phone viewport: theme *Midnight*, background *Aurora* and glass apply live (data attributes, `backdrop-filter` active). The bottom bar is visible, navigates and shows the active item; the *More* sheet lists all sections.
+44. Phone viewport: navigation is the sidebar by default (bottom bar off); the menu button opens it, tapping outside and choosing a destination close it. Appearance: theme *Midnight*, background *Aurora* and glass apply live (data attributes, `backdrop-filter` active). The bottom bar is visible, navigates and shows the active item; the *More* sheet lists all sections.
 45. Light mode + custom accent `#e0603a` resolves to the exact accent variable; desktop glass screenshots.
 
 ## Plugin entry (`tests/e2e/plugin.e2e.mjs`) — `main.ts` + `obsidian-mock.ts`
@@ -72,6 +72,8 @@ Page render times on the demo vault (Chromium, measured in e2e): Home 15 ms, Tod
 ## Bugs found by these tests and fixed
 - **Scroll jumped to the top after in-place updates (e.g. ticking a habit on iOS)**: the page was emptied before re-rendering, so the scroll height briefly collapsed. Now the new page is built off-DOM and swapped in one step, entrance animations are muted during such updates, and the scroll position is re-applied after layout.
 - Tapping the label of a switch row didn't toggle it → the whole row is now the tap target.
+- Phone sidebar overlay sat under its dimming layer (a background-layer rule outranked the mobile rules) → zero-specificity rule; sidebar items are tappable again.
+- Obsidian's mobile button styles broke the *More* sheet layout → our buttons no longer inherit Obsidian's height/shadow.
 - Primary buttons rendered without a visible label (a CSS reset outweighed the button colour) → resets moved into `:where()`.
 - Narrow layout: the workspace was placed into a 0 px grid column once the sidebar became an overlay → explicit grid placement.
 - Typing immediately after `Ctrl+K` / `C` could lose keystrokes (focus was set on the next frame) → focus set synchronously.

@@ -317,8 +317,24 @@ await check('scroll: habit toggle keeps scroll position', async () => {
 await check('appearance: theme/glass/background live + bottom nav on phone', async () => {
   const p = await open('dark', 'appearance', { width: 390, height: 844 });
   await settle(p);
+  // default: navigation lives in the sidebar, bottom bar is opt-in
+  assert(await p.$eval('.sb-bottomnav', (e) => getComputedStyle(e).display === 'none'), 'bottom nav should be off by default');
+  await p.click('.sb-topbar__menu');
+  await settle(p, 400);
+  assert(await p.$eval('.sb-sidebar', (e) => e.getBoundingClientRect().left >= 0), 'sidebar did not open');
+  await p.screenshot({ path: path.join(shots, 'phone-sidebar.png') });
+  await p.mouse.click(370, 400); // tap the scrim
+  await settle(p, 400);
+  assert(await p.$eval('.sb-sidebar', (e) => e.getBoundingClientRect().right <= 1), 'scrim tap did not close sidebar');
+  await p.click('.sb-topbar__menu');
+  await settle(p, 300);
+  await p.click('.sb-sidebar .sb-nav__item[data-nav="appearance"], .sb-sidebar .sb-nav__item[data-nav="tasks"]');
+  await settle(p, 400);
+  assert(await p.$eval('.sb-sidebar', (e) => e.getBoundingClientRect().right <= 1), 'sidebar not closed after navigating');
+  await p.evaluate(() => { window.__sbos.settings.bottomNav.mode = 'auto'; window.__sbos.shell.navigate('appearance'); window.__sbos.shell.applyAppearance(); });
+  await settle(p, 300);
   const visible = await p.$eval('.sb-bottomnav', (e) => getComputedStyle(e).display !== 'none');
-  assert(visible, 'bottom nav hidden on phone width');
+  assert(visible, 'opt-in bottom nav hidden on phone width');
   await p.click('.sb-theme-swatch >> text=Midnight');
   await settle(p, 300);
   await p.click('.sb-bg-swatch >> text=Aurora');

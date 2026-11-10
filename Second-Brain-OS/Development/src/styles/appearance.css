@@ -3,7 +3,8 @@
 .sb-app.has-bg .sb-bg { display: block; }
 .sb-bg__image { position: absolute; inset: 0; background-color: var(--sb-bg); }
 .sb-bg__dim { position: absolute; inset: 0; background: var(--sb-bg); transition: opacity var(--sb-base) var(--sb-ease-out); }
-.sb-app > .sb-sidebar, .sb-app > .sb-workspace, .sb-app > .sb-context { position: relative; z-index: 1; }
+/* zero specificity so the narrow-screen overlay rules (position: absolute; z-index: 20) still win */
+:where(.sb-app) > :where(.sb-sidebar, .sb-workspace, .sb-context) { position: relative; z-index: 1; }
 .sb-app.has-bg { background: var(--sb-bg); }
 .sb-app.has-bg .sb-topbar { background: color-mix(in srgb, var(--sb-bg) 72%, transparent); }
 .sb-app.has-bg .sb-sidebar, .sb-app.has-bg .sb-context { background: color-mix(in srgb, var(--sb-surface-0) 78%, transparent); }
@@ -163,4 +164,27 @@ body.is-mobile .sbos-root .sb-kbd { display: none; }
 @container (max-width: 760px) {
   .sb-app.bn-auto .sb-capture-btn, .sb-app.bn-always .sb-capture-btn { display: none; }
   .sb-quick__item .sb-kbd, .sb-sidebar__search .sb-kbd { display: none; }
+}
+
+/* ───────── Sidebar as overlay on phones (tap outside to close) ───────── */
+.sb-scrim { display: none; }
+@container (max-width: 760px) {
+  .sb-app.is-collapsed .sb-scrim { display: block; position: absolute; inset: 0; z-index: 15; background: var(--sb-backdrop); animation: sb-fade-in var(--sb-base) var(--sb-ease-out); }
+  .sb-sidebar { padding-top: calc(var(--sb-4) + env(safe-area-inset-top, 0px)); padding-bottom: calc(var(--sb-3) + env(safe-area-inset-bottom, 0px)); overflow-y: auto; }
+  .sb-nav__item { height: 40px; }
+}
+@keyframes sb-fade-in { from { opacity: 0; } }
+.sb-sidebar__footer .sb-obsidian-btn { margin-right: auto; }
+
+/* ───────── Shield against Obsidian's global (mobile) button styling ───────── */
+.sbos-root :is(.sb-sheet__item, .sb-quick__item, .sb-theme-swatch, .sb-bg-swatch, .sb-linkbtn, .sb-row, .sb-sidebar__search, .sb-seg__item, .sb-menu__item, .sb-bottomnav__item, .sb-habit__check, .sb-check, .sb-task__more, .sb-bn-choice, .sb-mood__item, .sb-modal__close, .sb-toast__close, .sb-toast__action):not(:focus-visible) {
+  box-shadow: none;
+}
+.sbos-root button { font-family: inherit; -webkit-tap-highlight-color: transparent; }
+.sbos-root :is(.sb-sheet__item, .sb-theme-swatch, .sb-bg-swatch, .sb-linkbtn, .sb-row) { height: auto; }
+.sbos-root .sb-quick__item { height: auto; }
+@container (max-width: 760px) {
+  .sb-app.is-collapsed .sb-sidebar__footer { flex-direction: row; gap: 0; }
+  .sb-app.is-collapsed .sb-sidebar__search { justify-content: flex-start; padding: 0 var(--sb-2) 0 10px; }
+  .sb-app.is-collapsed .sb-brand { padding-left: var(--sb-2); }
 }

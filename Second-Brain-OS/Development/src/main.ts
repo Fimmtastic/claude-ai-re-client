@@ -91,7 +91,7 @@ export default class SecondBrainPlugin extends Plugin {
     const active = leaf?.view.getViewType() === VIEW_TYPE;
     document.body.classList.toggle('sbos-app-active', active);
     document.body.classList.toggle('sbos-immersive', active && this.settings.immersive);
-    document.body.classList.toggle('sbos-hide-obsidian-nav', active && this.settings.bottomNav.mode !== 'off' && this.settings.bottomNav.hideObsidianBar);
+    document.body.classList.toggle('sbos-hide-obsidian-nav', active && this.settings.bottomNav.hideObsidianBar);
     // Offer a way back from any markdown editor
     if (leaf?.view instanceof MarkdownView) {
       const v = leaf.view as MarkdownView & { __sbosAction?: HTMLElement };

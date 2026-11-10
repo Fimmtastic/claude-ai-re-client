@@ -71,7 +71,7 @@ export const DEFAULT_APPEARANCE: Appearance = {
   radius: 1,
 };
 
-export const DEFAULT_BOTTOM_NAV: BottomNavSettings = { mode: 'auto', items: ['home', 'today', 'capture', 'tasks', 'more'], hideObsidianBar: true };
+export const DEFAULT_BOTTOM_NAV: BottomNavSettings = { mode: 'off', items: ['home', 'today', 'capture', 'tasks', 'more'], hideObsidianBar: true };
 
 export interface Settings {
   schemaVersion: number;
@@ -108,7 +108,7 @@ export interface Settings {
 }
 
 export const DEFAULT_SETTINGS: Settings = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   userName: '',
   locale: 'en-GB',
   motto: '',
@@ -149,6 +149,9 @@ export function mergeSettings(stored: unknown): Settings {
     habits: Array.isArray(s.habits) ? s.habits.filter((h) => typeof h === 'string') : DEFAULT_SETTINGS.habits,
     dashboard: DEFAULT_SETTINGS.dashboard,
   };
+  // v2: navigation returns to the sidebar by default (bottom bar becomes opt-in)
+  if ((s.schemaVersion ?? 1) < 2) merged.bottomNav.mode = 'off';
+  merged.schemaVersion = DEFAULT_SETTINGS.schemaVersion;
   // dashboard: keep user order, drop unknown, append new widgets
   const known = new Set(DEFAULT_SETTINGS.dashboard.map((w) => w.id));
   const fromUser = Array.isArray(s.dashboard) ? s.dashboard.filter((w) => w && known.has(w.id)) : [];
